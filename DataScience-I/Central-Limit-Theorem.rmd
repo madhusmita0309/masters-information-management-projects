@@ -1,0 +1,277 @@
+---
+title: 'IMT 573: PSet 4 -Distributions, Central Limit Theorem'
+author: "Madhusmita Oke"
+output: html_document
+---
+
+# Setup
+
+Do whatever setup you do here, such as loading libraries
+
+```{r setup, message=FALSE}
+# Load standard libraries
+library("tidyverse")
+library("modeest")
+```
+
+# 1 Compare differently distributed data
+## 1.1 Human Bodies 
+### 1.1.1 Height - which type of measure? How can we measure it?
+
+Height has a well-defined zero and quantitatively measurable quantity. So it is classified as a Ratio measure.
+Height of a person can take any value measured precisely in relevant height range which is always positive. Hence we can measure height as positive and continuous value.
+
+### 1.1.2 Fatherson data - descriptive analysis of fathers' heights
+```{r}
+df_fatherson <- read.csv("/Users/madhusmitaoke/MSIM-Academic/DataScience/IMT573-DSI/data/fatherson.csv.bz2", sep = "\t")
+dim(df_fatherson)
+names(df_fatherson)
+
+max(df_fatherson$fheight)
+min(df_fatherson$fheight)
+mean(df_fatherson$fheight)
+df_fatherson[is.na(df_fatherson$fheight),]
+
+```
+
+There are 1078 rows with fathers height (fheight) and son's height (sheight). The max height of father is 191.6cm and min is 149.9cm. There are no NA /missing values or unreasonable heights (looking at min and max heights of fathers)
+
+### 1.1.3 Compute mean, median, standard deviation and range of the heights. Discuss the relationship between these numbers.
+
+```{r}
+cat("Mean is:",mean(df_fatherson$fheight, na_rm = TRUE),"\n")
+cat("Median is:", median(df_fatherson$fheight, na_rm = TRUE),"\n")
+cat("Mode is:", mfv(df_fatherson$fheight, na_rm = TRUE),"\n")
+cat("Standard deviation is:",sd(df_fatherson$fheight),"\n")
+```
+
+Mean is slightly lesser than median by 0.175cm. Standard deviation is a smaller number as compared to the mean. This indicates that closely spaced from the mean -  many heights' observations in data are closer to mean height.
+
+### 1.1.4 Plot histogram
+```{r}
+ggplot(df_fatherson, aes(fheight)) + geom_histogram(fill="lightblue", col="white") +
+  geom_vline(xintercept=median(df_fatherson$fheight), col="red")+
+  geom_vline(xintercept=mean(df_fatherson$fheight), col="green")
+```
+
+As mentioned earlier, the plot confirms that mean and median are very close to each other and most of the height observations are close to the mean height. 
+The distribution looks almost similar to normal distribution.
+
+## 1.2 Human Influence
+### 1.2.1. What kind of measure is number of citations? Summary statistics?
+Number of citations may be categorized as interval type of measure. (which is measured only in academic or research level context, if absent it may be considered to be 0 ). It will be positive and discrete variable as number of citations can take essentially only whole numbers.
+
+### 1.2.2 Basic Descriptive analysis of data
+```{r}
+# mag-in-citations
+df_citations <- read.csv("/Users/madhusmitaoke/MSIM-Academic/DataScience/IMT573-DSI/data/mag-in-citations.csv.bz2", sep = ",")
+dim(df_citations)
+#names(df_citations)
+#head(df_citations)
+max(df_citations$citations)
+min(df_citations$citations)
+mean(df_citations$citations)
+df_citations[is.na(df_citations$citations),]
+range(df_citations$citations)
+#length(unique(df_citations$paperId))
+#count(df_citations[df_citations$citations == 0, ])
+```
+
+We have 388258 observations, no missing values. All values seem plausible- there are many 0 values which means many research papers have never been cited . The range of citations is [0, 18682]
+
+### 1.2.3 Compute Mean, Median, Mode, Standard Deviation.
+```{r}
+cat("Mean is:",mean(df_citations$citations, na_rm = TRUE),"\n")
+cat("Median is:", median(df_citations$citations, na_rm = TRUE),"\n")
+cat("Mode is:", mfv(df_citations$citations, na_rm = TRUE),"\n")
+cat("Standard deviation is:",sd(df_citations$citations),"\n")
+```
+The mean is significantly greater than median that indicates the data is skewed and many values are not closer to the mean. The mode is lowest value, that is, 0 . Mode and Median are closer which means half of the values lie between 0,1,2,3 but the mean is 15 indicating many high values' presence for remainder of the citation values.
+
+### 1.2.4 Histogram plotting
+```{r}
+ggplot(df_citations, aes(citations)) + geom_histogram(fill = "lightblue", col =
+                                                      "white") +
+  geom_vline(xintercept = median(df_citations$citations),
+             col = "red") +
+  geom_vline(xintercept = mean(df_citations$citations),
+             col = "green")
+
+```
+
+The histogram kind of resembles Pareto distribution where major values are zero and other diffferent values are really hard to notice.
+
+Trying log log scale to make the graph more intuitive
+
+```{r}
+df_citations <- df_citations %>% mutate( citations = citations+1)
+range(df_citations$citations)
+
+```
+
+```{r}
+ggplot(df_citations, aes(citations)) +
+  geom_histogram( fill = "lightblue", color = "blue") +
+  scale_x_log10() +
+  labs(title = "Log-Log Scale Histogram for Citations ", x = "Log(citations)")
+
+```
+
+
+### 1.2.5 Comment on findings about human bodies and influence
+
+From the analysis of heights i.e. human bodies - we can conclude that its a fairly normal distribution. It is intuitive as well - heights of most people are concentrated over a certain range and become rarified as we go lower or higher (very tall or very short persons)
+
+From the analysis of citations ie. influence, we can conclude that its a pareto distributions. It means that most research papers have no or less citations but there are few which are very highly cited. Highly cited papers are more likely to be cited by newer research papers (they might be seminal pieces in research or crucial pioneer research breakthroughs - is my logical conclusion).
+
+# 2 Explore Central Limit Theorem
+## 2.1 Compute expected value and variance of this random variable
+```{r}
+x <- sample(c(-1, 1), 10, replace=TRUE)
+x
+```
+
+```{r}
+df_temp <- data.frame( col =c(-1 , 1,  1, 1,  1 , 1, -1, -1, -1,  1))
+#df_temp
+
+expectation_function <- function(df){
+  expectationx <- 0.5 * (sum(df))
+  return(expectationx)
+}
+
+expectation_sq_function <- function(df){
+  df_sq <- df^2
+  expectationx2 <- expectation_function(df_sq)
+  return(expectationx2)
+}
+
+variance_function <- function(exp_x, exp_x2){
+  sq_val <- exp_x^2
+  variance_val <- exp_x2 - sq_val
+  return(variance_val)
+}
+```
+
+```{r eval=FALSE}
+ans <- expectation_function(df_temp)
+ans
+```
+```{r}
+x <- sample(c(-1, 1), 10, replace=TRUE)
+x
+expectation_val <- expectation_function(x)
+#expectation_val
+expectation_sq_val <- expectation_sq_function(x)
+#expectation_sq_val
+variance_val2 <- variance_function(expectation_val, expectation_sq_val)
+#variance_val2
+cat("Expectation value of X (with 10 values):",expectation_val, "\n")
+cat("Variance value of X (with 10 values):", variance_val2, "\n")
+
+```
+
+## 2.2 , 2.3 Repetitions = 1000. create vector and plot histogram
+
+```{r}
+df_x_1k <- sample(c(-1, 1), 1000, replace=TRUE)  
+hist(df_x_1k, breaks=30, xlab= "Sample 1000", main="Histogram for R=1000, S=1")
+```
+
+## 2.4 Compute mean and variance of random numbers using var, mean and compare with values in question 2.1
+
+```{r}
+mean_val <- mean(df_x_1k)
+var_val <- var(df_x_1k)
+
+cat("Mean value is:",mean_val,"\n")
+cat("Variance value is:",var_val, "\n")
+```
+
+Comparing above values with that of computed values in Question 2.1 , we see that there is lot of difference between variance and expected value vs mean differ as well. 
+
+## 2.5 For R=1000 pairs compute mean and plot histogram. Consider S denoting tuple size or random variable X here S=2 for a pair
+```{r}
+r <- 1000
+random_numbers <- rbinom(r*2 , size = 1, prob = 0.5) * 2 - 1
+#length(random_numbers)
+# Reshape the data into pairs
+pairs <- matrix(random_numbers, ncol = 2, byrow = TRUE)
+#pairs
+row_means <- rowMeans(pairs)
+#length(row_means)
+hist(row_means, breaks = 30, xlab = "Sample 2000", main="Histogram for R=1000, S=2")
+```
+
+```{r}
+# Function to compute mean for given tuple size and repeatations
+generate_random_tuples <- function(r, tuple_no){
+  random_numbers <- rbinom(r * tuple_no, size = 1, prob = 0.5) * 2 - 1
+  computed_tuples <- matrix(random_numbers, ncol = tuple_no, byrow = TRUE)
+  row_means <- rowMeans(computed_tuples)
+  return(row_means)
+}
+
+```
+## 2.6 Compute and report mean and variance for above
+
+```{r}
+mean_pairs <- mean(row_means)
+variance_pairs <- var(row_means)
+
+cat("Mean is:",mean_pairs,"\n")
+cat("Variance is:",variance_pairs,"\n")
+```
+
+## 2.7 Repeat above 2 steps for 5 random variables, plot histogram and report mean, variance
+```{r}
+mean_5 <- generate_random_tuples(r=1000, tuple_no = 5)
+hist(mean_5, breaks = 30, xlab = "Sample 5000", main="Histogram for R=1000, S=5")
+
+```
+
+
+
+```{r}
+mean_tuple_5 <- mean(mean_5)
+variance_tuple_5 <- var(mean_5)
+cat("Mean is:",mean_tuple_5,"\n")
+cat("Variance is:",variance_tuple_5,"\n")
+```
+
+## 2.8 Repeat for tuple size =25
+```{r}
+mean_25 <- generate_random_tuples(r=1000, tuple_no = 25)
+hist(mean_25, breaks = 30, xlab = "Sample 25000", main="Histogram for R=1000, S=25")
+```
+
+
+```{r}
+mean_tuple_25 <- mean(mean_25)
+variance_tuple_25 <- var(mean_25)
+cat("Mean is:",mean_tuple_25,"\n")
+cat("Variance is:",variance_tuple_25,"\n")
+```
+
+
+## 2.9 Repeat for tuple size =1000
+```{r}
+mean_1000 <- generate_random_tuples(r=1000, tuple_no = 1000)
+hist(mean_1000, breaks=30, xlab = "Sample 1000000", main="Histogram for R=1000, S=1000")
+```
+
+```{r}
+mean_tuple_1k <- mean(mean_1000)
+variance_tuple_1k <- var(mean_1000)
+cat("Mean is:",mean_tuple_1k,"\n")
+cat("Variance is:",variance_tuple_1k,"\n")
+```
+
+
+## 2.10 Comment on tuple size and shape of histogram
+
+As the tuple size increases from 5, 25 to 1000 the histogram starts resembling more and more to normal distribution
+
+## 2.11 Why does histogram start resembling normal distribution when we take mean of large sample values. especially from s=1 to s=2 ...
+According to Central Limit Theorem, the sum of independent random variables tends to be normally distributed as sample size n tends to infinity.The histogram above starts to resemble normal distribution as we increase the independent random variables (or columns) in the experiment (5, 25,1000) inturn increasing the sample size used in calculating the mean. Same normal distribution tendency holds true for mean distributions as mean is sum/n.
+

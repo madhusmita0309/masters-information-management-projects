@@ -1,0 +1,106 @@
+---
+title: "IMT 573: Lab 1 - Exploring Data"
+author: "Madhusmita Oke"
+output:
+  html_document: default
+---
+
+
+# Collaborators
+Madhusmita
+
+# Setup
+```{r setup, message=FALSE}
+# Load standard libraries
+library("tidyverse")
+```
+
+# Question 1
+
+## Question 1.1
+After observing the titanic dataset we can infer few things:
+1. There are 1309 rows, 14 columns (attributes of passengers)
+2. head and tail (top, bottom rows respectively) on observation show NA values, that is, empty values, especially age column which we will need to use for finding survival percentage based on child /adult age.
+
+```{r}
+titanic <- read.csv("titanic.csv.bz2")
+print(nrow(titanic))
+print(ncol(titanic))
+head(titanic)
+tail(titanic)
+```
+``` 
+Checking for some specific missing values (viz age, survived 0/1 ?)
+``` 
+
+```{r}
+ # Checking for some specific missing values (viz age, survived 0/1 ?)
+print(sum(is.na(titanic$age)))
+print(sum(is.na(titanic$survived)))
+```
+ 
+
+## Question 1.2
+We can see that 263 rows have missing age! Age is needed to compute whether the person was/is an adult or child as our final aim to find- whether children are more likely to survive. 
+In order to find survival rate, we need to remove these observations as we cannot compute result without age factor here
+
+If age was reported only for survived children and we removed other rows (with missing values - which may have been children as well- we don't really know!), it would seem that all the children survived! Thus, they are more likely to survive, but that may or may not be the case as some ages were not reported at all and we removed them
+
+
+```{r}
+# Filtering columns which are not needed - only age and survived are needed here
+needed_columns <- c("age", "survived")
+df_filtered <- titanic[needed_columns]
+dim(df_filtered)
+```
+
+```{r}
+print(sum(!is.na(df_filtered$age)))
+# Removing rows with missing age values
+#x <- df_filtered[!is.na(df_filtered$age),]
+#sum(is.na(x$age))
+df_valid_values <- na.omit(df_filtered)
+sum(is.na(df_valid_values$age))
+```
+
+```{r}
+df_children <- df_valid_values[df_valid_values$age <14 ,]
+children_count <-nrow(df_children)
+# total children
+print(children_count)
+df_adults <- df_valid_values[df_valid_values$age >=14, ]
+# total adults
+adult_count <- nrow(df_adults)
+print(adult_count)
+# print(adult_count + children_count)
+
+```
+```{r }
+
+survived_children <- df_children[df_children$survived ==1 ,]
+survived_children_count <- nrow(survived_children)
+cat(survived_children_count)
+percentage_children_survived <- (survived_children_count*100)/children_count
+cat("Survival Percentage for Children:",percentage_children_survived)
+```
+
+```{r }
+
+survived_adults <- df_adults[df_adults$survived ==1 ,]
+survived_adults_count <- nrow(survived_adults)
+cat(survived_adults_count)
+percentage_adults_survived <- survived_adults_count*100/adult_count
+cat("Survival Percentage for Adults:",percentage_adults_survived)
+```
+
+```
+This survival percentage of children v/s adult shows that children were more likely to survive than adults as their survival percentage is greater than adults (considering this dataset)
+
+Both percentages are quite alarmingly less! This shows that maritime safety and disaster management pratices were not given the attention they deserved (and had to be amended after the serious incident).
+```
+
+
+
+```{r }
+
+```

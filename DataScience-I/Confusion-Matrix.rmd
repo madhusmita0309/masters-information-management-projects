@@ -1,0 +1,158 @@
+---
+title: "IMT 573: Lab 8 - Confusion Matrix"
+author: "Madhusmita Oke"
+output:
+  html_document: default
+---
+
+
+# Setup
+
+Do whatever setup you do here, such as loading libraries
+
+```{r setup, message=FALSE}
+# Load standard libraries
+library("tidyverse")
+```
+
+# 1 Confusion Matrix
+
+## 1.1 Show the confusion matrices for models M1 and M2. Construct these manually and show as markdown table; Do not create data frames!
+<b>Poisonous mushrooms classification </b>
+
+Consider Poisonous = 1 (P) & Edible or Non-poisonous = 0 (E)
+
+<b> For M1 </b>
+
+|                         | **Predicted**     |                |
+| ----------------------- | -----------------:| --------------:|         
+|                         |  **Edible**       | **Poisonous**  | 
+|**Actual** **Edible**    |        4          |       3        |
+|           **Poisonous** |        0          |       3        |
+
+<b> For M2 </b>
+
+|                         | **Predicted**     |                |
+| ----------------------- | -----------------:| --------------:|         
+|                         |  **Edible**       | **Poisonous**  | 
+|**Actual** **Edible**    |        7          |        0       |
+|           **Poisonous** |        1          |        2       |
+
+
+## 1.2 Compute the accuracy, precision, recall for both models. Write your answer as markdown, no code. Feel free to use R as a calculator.
+<b> For M1 </b>
+
+precision1 = 3/6 = 0.5
+
+recall1 = 3/3 = 1
+
+accuracy1 = 4+3/10 = 0.7
+
+<b> For M2 </b>
+
+
+precision2 =  2/2 = 1
+
+recall2 = 2/3 = 0.667
+
+accuracy2 = 9/10 = 0.9
+
+
+## 1.3 Prof. Joffe wants to deploy the algorithm tomorrow. Which model, M1 or M2 will you recommend him to use? Explain your choice to him!
+
+We would select M1 because of its high recall value which indicates its efficient in identifying all true positives i.e all poisonous mushrooms. It is important for us to classify all poisonous mushrooms correctly rather than precision as misclassification here can lead to poisonous mushrooms getting considered as edible!
+Hence M1 would be recommended to use.
+
+## 1.4 Show the confusion matrices for M3 and M4.
+
+<b>Defendants classification </b>
+
+Consider Guilty = 1 (G) & Innocent or Non-guilty = 0 (I)
+
+<b> For M3 </b>
+
+|                        | **Predicted**     |                |
+| --------------------   | -----------------:| --------------:|      
+|                        |  **Innocent**     | **Guilty**     | 
+|**Actual** **Innocent** |          3        |       2        |
+|           **Guilty**   |          1        |       4        |
+
+<b> For M4 </b>
+
+|                        | **Predicted**     |                |
+| --------------------   | -----------------:| --------------:|      
+|                        |  **Innocent**     | **Guilty**     | 
+|**Actual** **Innocent** |         5         |        0       |
+|           **Guilty**   |         3         |        2       |
+
+## 1.5 Compute the accuracy, precision, recall for both models.
+<b> For M3 </b>
+
+precision = 4/6 = 0.667
+
+recall = 4/5 = 0.8
+
+accuracy = 3+4/10 = 0.7
+
+<b> For M4 </b>
+
+precision = 2/2 = 1
+
+recall = 2/5 = 0.4
+
+accuracy = 5+2/10 = 0.7
+
+## 1.6 Patricia wants to commission the Machine Learning system tomorrow. Which model would you recommend her to use? Explain your reasoning!
+
+Model M4 is recommended because of higher precision which indicates those classified as guilty (here true positives) are highly likely to be guilty. ( assuming that emphasis is on ensuring that  innocent person is not classified as guilty as he/she would suffer without fault.)
+
+## 1.7 Show the confusion matrix for M5 and M6.
+<b> S. vorax </b>
+
+Consider simolestes vorax (S) = 1 and Other Marine dinosaurs (O) = 0
+<b> For M5 </b>
+
+|                                 | **Predicted**            |                |
+| --------------------------------| ------------------------:| --------------:|      
+|                                 |  **Other dinosaurs**     | **S Vorax **   | 
+|**Actual** **Other dinosaurs**   |               3          |       2        |
+|           **S Vorax **          |               1          |       4        |
+
+<b> For M6 </b>
+
+|                               | **Predicted**            |                 |
+| ----------------------------- | ------------------------:| ---------------:|      
+|                               |  **Other dinosaurs**     | **S Vorax**     | 
+|**Actual** **Other dinosaurs** |             2            |         3       |
+|           **S Vorax**         |             0            |         5       |
+
+## 1.8 Compute accuracy, precision, recall, and F-score for both models.
+
+<b> For model M5 </b>
+
+Precision = 4/6 = 0.667
+
+Recall = 4/5 =0.8
+
+Accuracy = 4+3/10 = 0.7
+```{r}
+f_score <- (2* 0.667 * 0.8 )/ (0.667 + 0.8)
+f_score
+```
+
+<b> For model M6 </b>
+
+Precision = 5/8 = 0.625
+
+Recall = 5/5 = 1
+
+Accuracy = 5+2/10 = 0.7
+
+```{r}
+f_score2 <- (2* 0.625 * 1)/ (0.625 + 1)
+f_score2
+```
+
+
+## 1.9 Prof Gomez wants to submit her paper tomorrow. Which of these two models, M5 or M6 will you recommend? Explain why.
+Both models have same accuracy. Model M5 has better precision (0.8) but Model M6 has better recall (1). F1 score for Model M6 is better than M5. I would recommend to use Model 6 as it has better F1 score and recall which indicates that it captures qualifying positives correctly here simolestes vorax (S) bones.

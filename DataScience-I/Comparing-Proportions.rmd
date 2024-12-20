@@ -1,0 +1,154 @@
+---
+title: "IMT 573: Lab 5 - Compare proportions"
+author: "Madhusmita Oke"
+output:
+  html_document: default
+---
+
+# Collaborators
+- Madhusmita
+
+# Setup
+
+Do whatever setup you do here, such as loading libraries
+
+```{r setup, message=FALSE}
+# Load standard libraries
+library("tidyverse")
+```
+
+# 1 Simulations
+
+## 1.1 to 1.4 Simulate for S0 and R repeatations, Check for CI 95%
+H0: González has at 50% of total support. 
+
+Set initial poll size S0 is 500, Polls to be repeated R times say 1000
+```{r}
+# Function to compute poll
+poll <- function(poll_size) {
+  s <- rbinom(poll_size, 1, 0.5)
+  return(mean(s))
+}
+
+```
+
+find mean of means for R=1000
+```{r}
+means <- sapply(1:1000, function(x) poll(500))
+mean(means)
+
+```
+
+
+Computing 95% confidence level for H0
+```{r}
+
+c(quantile(means, 0.025), quantile(means, 0.975))
+```
+
+is 65% CI is inside or outside ? - It lies outside, So it indicates that poll size  was large, so we adjust the poll size
+## 1.5 Repeat the above steps for S, R
+```{r}
+s1 <- 250
+means2 <- sapply(1:1000, function(x) poll(s1))
+#means
+mean(means2)
+
+c(quantile(means2, 0.025), quantile(means2, 0.975))
+```
+
+0.65 still lies outside for poll size 250, so we repeat the experiment.
+
+```{r}
+s2 <- 200
+means3 <- sapply(1:1000, function(x) poll(s2))
+#means
+mean(means3)
+
+c(quantile(means3, 0.025), quantile(means3, 0.975))
+```
+
+
+0.65 still lies outside for poll size 200, so we repeat the experiment.
+
+```{r}
+s3 <- 150
+means4 <- sapply(1:1000, function(x) poll(s3))
+#means
+mean(means4)
+
+c(quantile(means4, 0.025), quantile(means4, 0.975))
+```
+
+0.65 still lies outside for poll size 150, so we repeat the experiment.
+
+```{r}
+s4 <- 100
+means5 <- sapply(1:1000, function(x) poll(s4))
+#means
+mean(means5)
+
+c(quantile(means5, 0.025), quantile(means5, 0.975))
+```
+
+0.65 still lies outside for poll size 100, so we repeat the experiment.
+
+```{r}
+s5 <- 50
+means6 <- sapply(1:1000, function(x) poll(s5))
+#means
+mean(means6)
+
+c(quantile(means6, 0.025), quantile(means6, 0.975))
+```
+
+
+0.65 still lies outside for poll size 50, so we repeat the experiment.
+
+```{r}
+s6 <- 45
+means7 <- sapply(1:1000, function(x) poll(s6))
+#means
+mean(means7)
+
+c(quantile(means7, 0.025), quantile(means7, 0.975))
+```
+
+
+0.65 still lies outside for poll size 45, so we repeat the experiment.
+
+```{r}
+s7 <- 40
+means8 <- sapply(1:1000, function(x) poll(s7))
+#means
+mean(means8)
+
+c(quantile(means8, 0.025), quantile(means8, 0.975))
+```
+
+
+The result 65% for Harrell for poll size =40 is just at the boundary for CI 95% i.e. [0.35, 0.65]
+Sample size is just right for S* = 40
+
+## 1.6 Compute theoretical CI
+```{r}
+sample_size <- 40
+p<-0.5
+sigma2 = p*(1-p)/sample_size
+sigma <- sqrt(sigma2)
+sigma
+```
+
+Compute theoretical CI based on formula through central limit theorem on the properties of normal distribution 
+
+```{r}
+
+c(0.5 -  1.96 * sigma ,  0.5 + 1.96*sigma)
+```
+
+## 1.7 Based on your analysis, do you think Harrell is almost certain to be the winner? Do you see issues that your analysis did not address?
+
+Based on analysis, the theoretical CI (95%) is almost equal to the computed CI for sample size 40. So we can say that Harrell is almost certain to win based on polls in audience of size 40. 
+
+
+Our analysis is based of certain assumptions such as 65% winning chances for Harrell are representative of all Seattleites in question. Also, we are assuming that sufficient time has passed (we are closer to election voting deadline) when the 65% lead is calculated.Our analysis did not check for CI 99% in order to compute the likeliness of election result.

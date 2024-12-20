@@ -1,0 +1,92 @@
+---
+title: "IMT 573: Lab 6 - Simple Regression"
+author: "Madhusmita Oke"
+output:
+  html_document: default
+---
+
+
+# Setup
+
+Do whatever setup you do here, such as loading libraries
+
+```{r setup, message=FALSE}
+# Load standard libraries
+library("tidyverse")
+```
+
+# 1 States Data
+
+## 1.1 Matrix to data frame
+
+
+```{r}
+df_us_states <- data.frame(state.x77)
+dim(df_us_states)
+names(df_us_states)
+head(df_us_states, 4)
+```
+
+
+# 2 Analyse Data
+
+## 2.1 What do you expect to see for relation between income and HS.Grad ?
+I think the income should tend to increase for folks for states having more percentage of HS.Grad education.
+
+## 2.2 Plot the graph Income(Vertical) vs HS.Grad , add regression line on the plot
+
+```{r}
+plot1 <- ggplot(df_us_states, aes(HS.Grad, Income))+geom_smooth(method="lm", se=FALSE) + geom_point() 
+
+plot1
+```
+
+
+## 2.3 Upward sloping or downward sloping? Do you see dots treding up or down the line?
+The Regression line is upward sloping. We can see the dots are trending up and down in the similar fashion as the line.
+
+## 2.4 Run the Regression 
+```{r}
+m <- lm(Income ~ HS.Grad,data= df_us_states )
+summary(m)
+```
+
+## 2.5 Interpret the output of Regression
+The beta0 is 1931.105 and beta1 47.162. Beta1 is an indicator that with 1 unit increase(here 1 unit is 1% increase) in HS.Grad (X) variable there is 47.162 units increase in Income (Y). Beta0 value indicates what is the Income(Y) when HS.Grad(X) is 0 units (here 0%)
+
+
+## 2.6 p-value & its significance
+The p-value for the data we measured is 1.58 * 10^-6 which is very small thus we can reject the null hypothesis which is - there is no relation between Income and High school-Grad education percentage.
+Thus we can say that there is possible positive association between Income and HS.Grad
+
+## 2.7 What do these numbers tell about association of Education and Income?
+Since the p-value is significantly smaller we can say that Education and Income are likely to be associated
+
+# 3 Analyze murder and life expectancy
+Analyze murder and life expectancy
+
+## 3.1 What will the relationship look like?
+Logically, the life expectancy would decrease with increase in murder percentage! 
+
+## 3.2 Plot graph Life Exp vs Murder
+```{r}
+plot2 <- ggplot(df_us_states, aes(Murder, Life.Exp))+geom_smooth(method="lm", se=FALSE) + geom_point() 
+
+plot2
+```
+
+The plot confirms my obvious expectation. It is a downward growing graph
+
+## 3.3 Regression output
+```{r}
+m2 <- lm(Life.Exp ~ Murder,data= df_us_states )
+summary(m2)
+```
+## 3.4 Interpret co-efficients b0 and b1 (beta0 and beta1)
+Here b0 is 72.97356 and b1 is -0.28395. b0 indicates that when Murder is 0, Life Exp is 72.97356. b1 is negative, it indicates that with increase in 1 unit murder parameter, life exp decreases by ~0.284.
+
+## 3.5 t-value and interpretation?
+Negative t-value would indicate that X variable affects dependent variable Y in opposite way.For the data above, t-value is negative - which indicates that with increase in murder, life expectancy decreases.
+
+## 3.6 What do these number tell about society / crime/ life expectancy!
+We can say that with decrease in murder /crime rates the life expectancy is likely to increase. Hence it is important to better safety of our society in order to have higher / healthier life expectancy!

@@ -1,0 +1,197 @@
+---
+title: 'IMT 573: PSet 6 - Linear Regression'
+author: "Madhusmita Oke"
+output: html_document
+---
+
+# Setup
+
+Do whatever setup you do here, such as loading libraries
+
+```{r setup, message=FALSE}
+# Load standard libraries
+library("tidyverse")
+```
+
+# 1 Housing Values in Boston
+
+## 1.1 Describe data and variables
+
+```{r}
+df_boston_houses <- read.delim("/Users/madhusmitaoke/MSIM-Academic/DataScience/IMT573-DSI/data/boston.csv.bz2")
+
+dim(df_boston_houses)
+names(df_boston_houses)
+any(is.na(df_boston_houses))
+
+```
+There are no missing values. The value of predictors to be used look fine (rm - avg rooms per dwelling - this is in decimal because its an avg value and lstat -lower status of population (percent) )
+## 1.2 Use predictors lstat and rm 
+
+#### 1.2.a Scatterplot that displays how medv is related to that predictor and add regression line to that plot. 
+
+<b>Lets consider rm as predictor </b>
+```{r}
+ggplot(df_boston_houses ,aes(rm, medv) )+ geom_point() + geom_smooth(method = "lm", se=FALSE)
+```
+
+The regression line is upward sloping which indicates increase in median value of owner occupied home as the avg rooms per dwelling increases. We can see some points digressing from regression line (kind of like outliers) as well showing some houses with higher median price even though avg rooms per dwelling may be slightly less - there might be other factors affecting this scenario like locality, closeness to employment centre or public high schools  etc. Alternatively, there are few lower priced houses with more avg rooms per dwelling- this may be due to other factors affecting the situation like remote locality etc 
+Overall, we can see that there is increase in medv with increase in rm 
+
+<b> Let's consider lstat as predictor </b>
+```{r}
+ggplot(df_boston_houses ,aes(lstat, medv) )+ geom_point() + geom_smooth(method = "lm", se=FALSE)
+```
+
+
+The regression line is downward sloping which indicates decrease in median value of owner occupied homes with increase in lower status population percentage. We can see some points digressing from line - very high median prices with low percent of lower status population percentage - it would indicate that rich population having costlier houses.
+
+#### 1.2.b Simple Linear Regression model to predict response
+
+<b> Consider regression model with respect to rm </b>
+```{r}
+m1 <- lm(medv ~ rm ,data= df_boston_houses )
+summary(m1)
+```
+
+
+<b>Consider regression model with respect to lstat </b>
+```{r}
+m2 <- lm(medv ~ lstat ,data= df_boston_houses )
+summary(m2)
+```
+
+#### 1.2.c Interpret the slope (the effect of your explanatory variable). Is it statistically significant?
+<b> Effect of rm (avg rooms per dwelling) i.e explanatory variable on medv (median value of owner-occupied homes in $1000s.) i.e. dependent variable </b>
+The p-value is <0.05 and statistically significant. 
+b1 or slope is 9.102 which indicates increase in 1 unit of rm(avg rooms) leads to increase in medv (house price) by 9.102 units. (~9k $)
+b0 or intercept is -34.67 units indicating decrease in medv (house price) if rm (avg rooms) is zero.
+
+<b> Effect of lstatt (lower status of the population (percent)) i.e. explanatory variable on medv (median value of owner-occupied homes in $1000s.) i.e dependent variable </b>
+The p-value is < 0.05 and statistically significant.
+b1 or slope is -0.95 which indicates increase in 1 unit lstat (% low status population) leads to decrease in medv (house price) by 0.95 units
+b0 or intercept is 34.55 units indicating increase in medv (house price) if lstat (% low status population) is zero
+
+From the comparison, rm has more effect on medv(price) than lstat effect on medv.(Comparing the slope or b1 value)
+
+#### 1.2.d Explain why do you think you see (or don’t see) the relationship on the figure/- model. Try to think about the possible social processes that make certain neighborhoods more or less expensive.
+We can see increase in avg rooms per dwelling has positive increase in house prices. This can be attributed to increase in area of house and neighbourhood close to employment places. For eg- downtown close to corporate offices tend to have higher prices as compared to university housing where students are sharing apartments ! Standard of living, proximity to certain places and purchasing power are few logical reasons for this trend
+
+Lower status population percentage increase shows decrease in house prices which is logical as people with lower purchasing power will likely opt for lower priced neighbourhood /houses.
+
+### 1.2.3 Comment the results: are there plots where you clearly can see a relationship related to models where the effect is statistically significant?
+The scatter plot with regression line above (1.1.1) show relationship related to regression model about dependent variable (house price ) and explanatory variable (avg rooms per dwelling or lower status population %). We cannot comment on the degree of effect of explanatory variable whether its statistically significant or upto what extend just by looking at scatter plot. We need to look at t-value, p-value and regression model results. The t-distribution vs what is observed in data , p-value of observed phenonmenon helps to comment if effect is statistically significant.
+
+### 1.2.4 If you do this correctly, you find t-value for rm to be 21.72. How is the t-value computed? What is it testing–what is H0 here? What would be the critical t-value here?
+
+t-value is ratio of estimate - coefficient of regression difference and standard error of estimated co-efficient.
+t-value = (estimate - H0) / std deviation  ,that is, b1-b0 / SE(B) here b1- beta 1 -slope, beta0 - intercept , SE (B) - std deviation in coefficients for regression
+On the basis of t-value and p-value, we can determine if the explanatory variable is statistically significant or not. In other words, whether we reject H0 or null hypothesis or fail to reject it. H0 or null hypothesis is that there is no relation between the explanatory variable and dependent variable.
+
+If p-value is <0.05 for the data, we can reject the null hypothesis H0 as it is statistically significant and shows association between dependent and independent variable. If t-value is greater than critical t-value t0 then it is said to be statistically significant and we can conclude that there is effect of explanatory variable on dependent variable (here medv).
+t0 or critical t-value is t-value from statistical table for significance level alpha = 0.05 (95% CI considered), and certain degree of freedom df (here 504).
+
+See tcr here- 
+```{r}
+df <- 504
+
+# 95% CI - significance level is alpha/2 - 0.025 for 2 tailed distribution
+alpha <- 0.025
+# critical t-value
+critical_t <- qt(1 - alpha, df)
+
+print(critical_t)
+```
+
+### 1.2.5 Fit a multiple regression model to predict the response using all the predictors. Describe your results. For which predictors can we reject the null hypothesis H0 : βj = 0?
+
+```{r}
+m3 <- lm(medv ~ . ,data= df_boston_houses )
+summary(m3)
+```
+
+From the p-value of each predictors above, crim, zn, chas, nox, rm, dis, rad, tax, ptratio, black, lstat are statistically significant(p-value <0.05) and indus, age are statistically not significant. It means we can reject null hypothesis for all predictors except - indus and age predictors( as the p-value is greater than 0.05).
+
+### 1.2.6 Interpret the results for rm, lstat and indus. Are the results statistically significant? Here just statistical interpretation is enough.
+
+rm and lstat results are statistically significant where as for indus it is not statistically significant as its p-value is high (0.73 > 0.05)
+rm, lstat have effect on medv, while indus does not affect medv.
+
+### 1.2.7 How do your results from 2 compare to your results from 5? Compare the results for those predictors you used for simple regression above. Explain why do the values differ. Do they still tell the same basic story?
+Pasting results from 2 and 5 for better comparison: 
+<b>Multiple Predictors:</b>
+Coefficients:
+              Estimate Std. Error t value Pr(>|t|) 
+rm           3.810e+00  4.179e-01   9.116  < 2e-16 **
+lstat       -5.248e-01  5.072e-02 -10.347  < 2e-16 ***
+
+<b>Single Predictor:</b>
+Coefficients:
+              Estimate Std. Error t value Pr(>|t|)   
+rm             9.102      0.419   21.72   <2e-16 ***
+lstat       -0.95005    0.03873  -24.53   <2e-16 ***
+
+We can see that the slope estimate (b1) and t-value and others value differ while considering single predictor vs multiple predictors at once. This happens due to collinearity, that is, predictor variables are correlated (not entirely independent). When apply multiple predictors in regression model, effect of each predictor for response variable is seen while keeping other predictors constant. This partial effect is seen in terms of difference in coefficients in above results.
+For instance logically thinking, avg rooms per dwelling (rm) may differ based on lstat (lower status population %) as rooms being affordable changes with purchasing power of population, that maybe (along with other predictors) affecting price of houses (medv).
+
+Found how to check collinearity between predictors with package in r as follows :
+```{r}
+vif_ans <- car::vif(m3) # VIF - variance inflation factor, m3- multiple predictor model
+print(vif_ans)
+```
+
+# 2 Interpret Regression Results
+
+## 2.1 Do neighborhoods with more evictions see more or less 311 calls? By how much?
+
+The positive value of coefficient for model(3) : 0.048 - indicates that neighbourhoods with more evictions see more 311 calls. Assuming that variables are NOT LOGGED , 1 unit increase in evictions in neighbourhood causes 0.048 units increase in 311 calls when all other variables are constant.
+
+## 2.2 Is the estimate statistically significant (at 5% level)?
+Yes, the estimate for number of evictions is statistically significant as table mentions significance level *** i.e 0.01 - pvalue < 0.05 
+
+## 2.3 How is poverty rate associated with 311 calls? How much more (or less) calls there are in neighborhoods with 10 pct point more poverty?
+The rate of poverty negatively affects 311 calls - with 1 unit increase in poverty results in decrease of 311 calls by 0.14 units. If poverty is increased by 10% , 311 calls will decrease by 0.1 * 0.14 units, that is, 0.014 units
+
+## 2.4 What can you tell about association of race (white) and calls?
+Increase in 1 unit of race % (white) leads to decrease in 311 calls by 0.038 units. This predictor variable is not statistically significant based on table value- p-value is not less than 0.05. Hence we can say race does not significantly affect 311 calls 
+
+## 2.5 Is older median age associated with more or less 311 calls? At which level is this statistically significant?
+Yes, 1 unit increase in median age results in 0.0067 units increase of 311 calls. It is statistically significant at *** 0.01 i.e 99% confidence interval. pvalu < 0.01 for this predictor variable.
+
+## 2.6 The value for housing density is -0.13. What does (small) number mean?
+It means on increase in 1 unit of house density, there is 0.13 units decrease in 311 calls. It is statistically significant as pvalue < 0.01. It indicates that more the density of houses in neighbourhood, they are less likely to make 311 calls.
+
+## 2.7 The omitted category for city is Austin, TX. Are there more or fewer calls in similar neighborhoods in Philadelphia, compared to Austin? By how much?
+There are more calls for Austin than Philadelphia.
+Considering Austin as a reference category, 311 calls for Philadelphia is 0.56 units fewer compared to Austin, assuming all other variables in the model are held constant.
+
+
+# 3 Extra Credit
+
+## 3.1 Do neighborhoods with more evictions see more or less 311 calls? By how much?
+
+The positive value of coefficient for model(3) : 0.048 - indicates that neighbourhoods with more evictions see more 311 calls. As both variables are LOGGED (log-log transform) , 1 % increase in evictions in neighbourhood causes 0.048 % increase in 311 calls when all other variables are constant.
+
+## 3.2 Is the estimate statistically significant (at 5% level)?
+Yes, the estimate for number of evictions is statistically significant as table mentions significance level *** i.e 0.01 - pvalue < 0.05 
+
+## 3.3 How is poverty rate associated with 311 calls? How much more (or less) calls there are in neighborhoods with 10 pct point more poverty?
+The rate of poverty negatively affects 311 calls - with 1 unit increase in poverty results in decrease of 311 calls by 14% . If poverty is increased by 10% , 311 calls will decrease as:
+% change in 311 calls = 100 * ((e^-0.014)-1)
+```{r}
+100*((exp(-0.014))-1)
+```
+It leads to approx 1.4% decrease in 311 calls
+
+## 3.4 What can you tell about association of race (white) and calls?
+Increase in 1 unit of race % (white) leads to decrease in 311 calls by 3.8 %. This predictor variable is not statistically significant based on table value- p-value is not less than 0.05. Hence we can say race does not significantly affect 311 calls 
+
+## 3.5 Is older median age associated with more or less 311 calls? At which level is this statistically significant?
+Yes, 1 unit increase in median age results in 0.67 %  increase of 311 calls. It is statistically significant at *** 0.01 i.e 99% confidence interval. pvalue < 0.01 for this predictor variable.
+
+## 3.6 The value for housing density is -0.13. What does (small) number mean?
+It means on increase in 1 % of house density, there is 0.13 % decrease in 311 calls. It is statistically significant as pvalue < 0.01. It indicates that more the density of houses in neighbourhood, they are less likely to make 311 calls.
+
+## 3.7 The omitted category for city is Austin, TX. Are there more or fewer calls in similar neighborhoods in Philadelphia, compared to Austin? By how much?
+There are more calls for Austin than Philadelphia.
+Considering Austin as a reference category, 311 calls for Philadelphia is 56 % fewer compared to Austin, assuming all other variables in the model are held constant.

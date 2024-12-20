@@ -1,0 +1,119 @@
+---
+title: "IMT 573: Lab 7 - Multiple Regression"
+author: "Madhusmita Oke"
+output:
+  html_document: default
+---
+
+
+# Setup
+
+Do whatever setup you do here, such as loading libraries
+
+```{r setup, message=FALSE}
+# Load standard libraries
+library("tidyverse")
+```
+
+# 1 Descriptive analysis
+
+## 1.1 Load the data and perform basic sanity checks. How many diamonds do we have?
+```{r}
+df_diamonds <- read.delim("/Users/madhusmitaoke/MSIM-Academic/DataScience/IMT573-DSI/data/diamonds.csv.bz2")
+
+dim(df_diamonds)
+names(df_diamonds)
+any(is.na(diamonds))
+head(diamonds, 4)
+```
+There are 53940 observations with 10 features such as cut,carat, price etc
+No missing values in the data
+
+## 1.2 Inspect the variable cut. What kind of different cuts are there? How frequent are those? Which one is the most common and which one is the least common?
+
+```{r}
+unique(df_diamonds$cut)
+
+df_cut_counts <- table(df_diamonds$cut)
+df_cut_counts
+```
+
+Different cuts are Fair, Good, Ideal, Premium and Very Good. Least common is Fair cut and most common is Ideal Cut.
+
+#  2 Regression analysis
+## 2.1 Include two variables: weight of diamonds (carat) and shape (cut).
+```{r}
+m <- lm(price ~ carat + cut ,data= df_diamonds )
+summary(m)
+```
+
+## 2.2 What is the reference category for cut?
+The reference category for cut is 'Fair'
+
+## 2.3 Interpret the following coefficients:
+### 2.3.a What is “carat” ?
+The value of "carat" is 7871.08 is coefficient beta1 indicating 1 unit increase in carat leads to 7871.08 units increase in price when keeping the "cut" constant.
+
+### 2.3.b What is “cutIdeal” (correct value should be 1800)?
+The coefficient for "cutIdeal" is 1800.92 indicating that 1 unit increase in 'ideal' cut keeping the carat constant leads to 1800.92 units increase in price. The price increase unit is in comparison to baseline which is 'cutFair' (denoted by intercept line price -3875.47)
+
+### 2.3.c. How much more expensive are ideal-cut diamonds compared to very good-cut diamonds (in average) of similar weight?
+The difference between coefficients associated with 'ideal cut' and 'very good cut' will determine the price difference for two categories (on average) keeping the carat (weight) constant
+```{r}
+1800.92 - 1510.14
+```
+Ideal cut is more expensive by 290.78 price units as compared to very good cut diamonds (keeping carat constant)
+
+### 2.3.d. What would be the (average) price for 1ct premium cut diamond?
+
+Price = b0 + b1 * carat + b2 * cutPremium 
+
+This will give price of 1 carat premium cut where cutPremium =1 , carat =1 and other coeffients are substituted as:
+
+Price = -3875.47 + (7871.08) * (1) + (1439.08) * (1)
+
+```{r}
+-3875.47 + (7871.08) * (1) + (1439.08) * (1)
+```
+
+Price (Avg) of 1 carat premium cut diamond is 5434.69 units
+
+
+# 3 Challenge 
+## 3.1 Plot the “price” versus “mass” and add the regression line to it.
+```{r}
+ggplot(df_diamonds ,aes(carat, price) )+ geom_point() + geom_smooth(method = "lm", se=FALSE)
+```
+## 3.2 Experiment with log scale for a) “price”, b) “carat”, c) both. In which plot do the two variables look most linearly realted, i.e., the relationship looks like a line?
+
+<b> Price with log scale </b>
+```{r}
+ggplot(df_diamonds, aes(carat, log(price)) )+ geom_point() + geom_smooth(method = "lm", se=FALSE)
+```
+
+<b> Carat with log scale </b>
+```{r}
+ggplot(df_diamonds, aes(log(carat), price) )+ geom_point() + geom_smooth(method = "lm", se=FALSE)
+```
+
+<b> Both price and carat in log scale </b>
+```{r}
+ggplot(df_diamonds, aes(log(carat), log(price)) )+ geom_point() + geom_smooth(method = "lm", se=FALSE)
+```
+
+In the third plot where both price and carat are in log scale- the two variables mostly look linearly related!
+
+## 3.3  Add the corresponding log-transform to your model. You can run log-transformed models just like lm(log(price) ∼ log(carat))
+```{r}
+m2 <- lm(log(price) ~ log(carat) ,data= df_diamonds )
+summary(m2)
+```
+looking at the p-value (<<0.05) log(carat) is statistically significant 
+
+## 3.4. Add “cut” to this model and interpret the coefficients.
+```{r}
+m3 <- lm(log(price) ~ log(carat)+ cut ,data= df_diamonds )
+summary(m3)
+```
+
+looking at p-value , all are statistically significant. B0 is 8.2 - log(price) increases by 8.2 if log(carat) increases by 1 unit keeping cut constant.

@@ -1,0 +1,115 @@
+---
+title: "IMT 573: Lab 4 Create stochastic data"
+author: "Madhusmita"
+output:
+  html_document: default
+---
+
+```{r setup, message=FALSE}
+# Load standard libraries
+library("tidyverse")
+library("modeest")
+```
+
+# 1 Toss two coins
+
+### 1.1. Which objects are you tossing? 
+I tossed 1 coin twice , repeated it for 20 times.
+
+```{r}
+df_coin_toss <- tribble(
+           ~TrialNo, ~Outcome, ~NoOfHeads,
+1, 'TH', 1,
+2, 'TT', 0,
+3, 'TH', 1,
+4, 'TT', 0,
+5,  'HH',2,
+6, 'TH', 1,
+7, 'TH', 1,
+8, 'HT',1,
+9, 'TH',1,
+10, 'TT',0,
+11, 'TH',1,
+12, 'HH',2,
+13, 'HT',2,
+14, 'HT',1,
+15, 'HT',1,
+16, 'TH',1,
+17,'TT',0,
+18, 'HH',2,
+19, 'HH',2,
+20, 'TH',1
+)
+```
+
+### 1.2 Create a table about the number of heads in each trial
+
+```{r}
+
+df_coin_toss <- df_coin_toss[, !names(df_coin_toss) %in% "Outcome"]
+df_coin_toss <- df_coin_toss %>% mutate(NoOfHeads = as.numeric(NoOfHeads))
+
+df_coin_toss
+```
+
+### 1.3 show a summary table of your results (0 heads–how many times; 1 head–how many times..)
+
+```{r}
+
+zero_head <- count(df_coin_toss[df_coin_toss$NoOfHeads == 0, ])
+#zero_head
+one_head <- count(df_coin_toss[df_coin_toss$NoOfHeads == 1, ])
+#one_head
+two_head <- count(df_coin_toss[df_coin_toss$NoOfHeads == 2, ])
+#two_head
+df_summary_coin_toss <-
+  data.frame(Heads = c(0, 1, 2),
+             NoOfHeads = c(as.numeric(zero_head), as.numeric(one_head), as.numeric(two_head)))
+
+df_summary_coin_toss
+```
+
+
+### 1.4 Compute mean of the results from coin toss experiment
+```{r}
+mean(df_coin_toss$NoOfHeads)
+```
+```{r}
+modeest::mlv(df_coin_toss$NoOfHeads, na.rm=TRUE, method="mfv")
+```
+
+### 1.5 Compute variance of your results.
+
+```{r}
+
+# 1.compute mean
+# 2. compute squares
+# 3. compute sq of mean from 1.
+# 4. compute mean of all squares from 2.
+# 5. Use variance formula
+df_mean <- mean(df_coin_toss$NoOfHeads)
+df_sq <- df_coin_toss$NoOfHeads^2
+df_sq_mean <- df_mean^2 # square of means
+df_mean_sq <- mean(df_sq) # mean of squares 
+variance <- df_mean_sq - df_sq_mean
+variance
+```
+
+### 1.6 Plot Histogram of your results
+```{r}
+ggplot(df_coin_toss, aes(NoOfHeads)) + geom_histogram(fill="lightblue")
+```
+
+
+### 1.7 Can you explain why the histogram looks like it does? If you flip ordinary coins then you see the middle bar is (most likely) taller. Why?
+If we flip ordinary coins (unbiased), the probability of getting only 1 head is 0.5 which is greater than probability of getting no heads (0.25) and both heads (0.25). Hence histogram (observations of head) would show a taller bar for 1 head scenario. This is demonstrated by the experiment where middle bar (1 head count) is taller (see above histogram).
+
+### 1.8 Does it look symmetric, or right/left skewed?
+The histogram looks symmetric 
+
+
+
+
+
+
+

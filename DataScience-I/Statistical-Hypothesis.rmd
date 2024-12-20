@@ -1,0 +1,203 @@
+---
+title: 'IMT 573: PSet 5 - Comparing Mean Values'
+author: "Madhusmita Oke"
+output: html_document
+---
+
+
+# Setup
+
+Do whatever setup you do here, such as loading libraries
+
+```{r setup, message=FALSE}
+# Load standard libraries
+library("tidyverse")
+```
+
+# 1 Descriptive Analysis
+## 1.1 Basic descriptive observations
+```{r}
+df_fatherson <- read.csv("/Users/madhusmitaoke/MSIM-Academic/DataScience/IMT573-DSI/data/fatherson-ps5.csv.bz2", sep = "\t")
+dim(df_fatherson)
+df_fatherson[is.na(df_fatherson),]
+```
+
+
+There are 1078 observations, 2 variables - fheight, sheight. There are no missing values.
+
+## 1.2 Father Son height summary
+
+```{r}
+fmean <- mean(df_fatherson$fheight)
+fmedian <- median(df_fatherson$fheight)
+fsd <- sd(df_fatherson$fheight)
+cat("Fathers' mean height is:",fmean, "\n")
+cat("Fathers' median height is:",fmedian,"\n")
+cat("Fathers' standard deviation is:",fsd, "\n")
+```
+
+
+```{r}
+smean <- mean(df_fatherson$sheight)
+smedian <- median(df_fatherson$sheight)
+ssd <- sd(df_fatherson$sheight)
+cat("Sons' mean height is:",smean, "\n")
+cat("Sons' median height is:",smedian,"\n")
+cat("Sons' standard deviation is:",ssd, "\n")
+```
+
+Looking at mean and median heights of father and son, it looks like sons are a bit taller than the fathers
+
+## 1.3 Graphical depiction : father and sons' heights
+```{r}
+
+
+ggplot(df_fatherson, aes(x = fheight, fill = "fheight")) +
+  geom_density(alpha = 0.5) +
+  geom_density(data = df_fatherson, aes(x = sheight, fill = "sheight"), alpha = 0.5) +
+  labs(title = "Overlapping Density Plots", fill = "") +
+  scale_fill_manual(values = c("sheight" = "lightblue", "fheight" = "pink")) 
+```
+
+
+
+## 1.4 Compute how much taller are the sons on average.
+```{r}
+df_height_diff <- df_fatherson %>% mutate( diff = sheight - fheight)
+
+#df_height_diff
+avg_height_diff <- mean(df_height_diff$diff)
+
+cat("Sons are taller by ", avg_height_diff , "on avg")
+```
+
+
+# 2. Simulations
+
+## 2.1  Compute the overall mean and standard deviation of pooled fathers’ and sons’ heights.
+```{r}
+mean_all_heights <- mean(c(df_fatherson$fheight, df_fatherson$sheight))
+sd_all_heights <- sd(c(df_fatherson$fheight, df_fatherson$sheight))
+
+cat("Overall mean is:",mean_all_heights)
+cat("Over all standard deviation is :", sd_all_heights)
+```
+
+## 2.2 What is the fake father-fake son mean difference? Compare the result with that you found in the previous problem.
+```{r}
+fakefathers <- rnorm(1078, mean=173.1912, sd=7.173111)
+fakesons <- rnorm(1078, mean=173.1912, sd=7.173111)
+diff_sample <- mean(fakefathers) - mean(fakesons) 
+cat("Mean difference is:",diff_sample)
+```
+
+
+The difference for simulated fathers and sons heights given above is different from actual one i.e. 2.5 cm
+
+## 2.3 For repetations =1000 - Each time store the difference, so you end up with R different values for the difference.
+
+```{r}
+R <- 1000 # repetitions 
+sim <- function(x) {
+fakef <- rnorm(1078, 173.1912, 7.173111)  
+fakes <- rnorm(1078, 173.1912, 7.173111)  
+mean(fakef) - mean(fakes) # mean difference
+}
+diffs <- sapply(1:R, sim)
+
+#diffs
+```
+## 2.4 What is the mean of the differences? Explain why do you get what you get.
+```{r}
+
+cat("Mean of differences is:", mean(diffs))
+```
+ 
+The mean of differences is close to 0. The samples for father, son's heights were taken from the same data having same mean and standard deviation. Although each sample (1...1000) differs in mean and standard deviation slightly, it is still representative of the data and so means are close to each other. By law of large numbers, the samples' mean is close to actual for large sample -here we are doing multiple iterations but taking mean of the differences so it tends to zero. 
+
+## 2.5 What is the standard deviation of the differences?
+```{r}
+cat("Standard deviation is:",sd(diffs))
+```
+
+## 2.6 What is the largest difference you got (in absolute value)? How does it compare to the actual sons/fathers difference of 2.5?
+
+```{r}
+cat("Largest absolute value of difference in 1000 iterations :",max(abs(diffs)))
+```
+
+## 2.7 Find 95% confidence intervals for the differences you computed. Does the actual difference fall inside or outside of the CI?
+
+```{r}
+q <- quantile(diffs, c(0.025, 0.975))
+cat("95% CI is:", q)
+
+```
+
+Actual difference lies outside the 95% CI. 
+
+## 2.8 What is your conclusion? Can you confidently say that sons are taller than fathers? Why?
+
+H0 is not compatible with the data! The difference of mean heights after simultations (1000 iterations) has 95% CI [-0.57, 0,60] , the actual mean difference (observed) lies outside CI, hence we can reject H0 that sons and fathers have same average height. We can conclude that there is difference in fathers' and sons' avg heights.
+
+
+# 3 t-test
+## 3.1 Compute the standard error for the difference of means.
+```{r}
+sigmaf <- var(df_fatherson$fheight)
+sigmas <- var(df_fatherson$sheight)
+std_err <- sqrt((sigmaf+sigmas)/1078)
+cat("Standard error for difference of means is: " , std_err)
+```
+
+## 3.2 t value computation
+```{r}
+obs_diff <- 2.532004
+t_value <- obs_diff/std_err
+cat("t-value is :", t_value)
+
+```
+## 3.3 what is the likelihood that such a t value happens just by random chance?
+
+A large t-value may happen just by random chance if sample size is very small. We can inspect p-value : smaller p-value indicating it is unlikely to occur if H0 is compatible. 
+
+
+As the degree of freedom increases( sample size n -1 here 1078-1 = 1077), the t distributions tends to become similar to normal distribution. By formula, t value is |D|/ standard error of means. |D| - difference between means of two samples/groups considered. In the table for t-values I would place it in last row for 0.05 for two-tails(95% CI for H0).
+The probability of high value is less - cannot be attributed to luck or randomness! If it is high there is statistical significance to it.
+
+## 3.4 State conclusion:
+We can see that critical t-value for n-1 degrees of freedom is less than the computed t-value , so we have to reject the null hypothesis H0. H0 is not compatible with the observed father -son height analysis. We can reject that fathers and sons have same height on avg. They have considerable difference in heights.
+
+# 4 Canned t-test
+## 4.1 Use t.test function to compare fathers and sons.
+
+
+```{r}
+t_test_ans <- t.test(df_fatherson$sheight, df_fatherson$fheight)
+t_test_ans
+```
+
+## 4.2 Do all three methods agree whether sons are taller than fathers?
+From the result above (t.test in R), actual difference(observed -2.5) lies in 95% CI of alternative hypothesis of fathers' and sons' height have difference in means. Therefore, we can say that there is difference in heights of sons and fathers.
+
+All three methods - simulations, t-test via formula, t.test function in R - point to same conclusion that there is significant difference in mean heights of father and son. Sons are taller than fathers.
+
+
+## 4.3 How many hours?
+I spent considerable time 8 hrs in the assignment- most time spent in re-reading the concept. t-test , p-value, using simulations - the concepts are tricky to grasp at once.
+
+# 5 Extra credit: parallel computing
+## 5.1 Let’s return to your MC example. Increase the number of repetitions R substantially, so it runs for at least 10 seconds.
+
+```{r}
+# start_time <- Sys.time()
+# 
+# 
+# while (as.numeric(difftime(Sys.time(), start_time, units = "secs")) < duration) {
+#   
+# }
+# 
+# cat("Loop completed after", duration, "seconds.\n")
+
+```
+

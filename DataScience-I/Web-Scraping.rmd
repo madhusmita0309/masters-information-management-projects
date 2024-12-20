@@ -1,0 +1,218 @@
+---
+title: 'IMT 573: PSet 3 - Scrape and plot data'
+author: "Madhusmita Oke"
+output: html_document
+---
+
+
+# Collaborators
+Madhusmita
+
+# Setup
+
+Do whatever setup you do here, such as loading libraries
+
+```{r setup, message=FALSE}
+# Load standard libraries
+library("tidyverse")
+library("rvest")
+library(ggplot2)
+```
+
+# 1 Scrape the web
+
+## 1.1 Ethical issues
+### 1.1.1 Consult wikipedia terms of usage. Does it put restrictions on web scraping?
+It is allowed to scrape wikipedia pages - it also has packages and libraries that allow downloading of free to use database dumps. It does have restrictions on web scraping done by automated web crawlers or scripts.
+
+### 1.1.2 Consult robots.txt. Is it permitted to scrape wiki-pages?
+Yes, one can scrape wiki-pages and use for educational purpose - CC-BY- SA policy. Although for non-free audio/video content with "context" exact use must be specified.
+
+robots.txt is the documentation that clearly describes restrictions on automated scraping of data. A lot of hits to the website can burden the website, and result in blocking of the user. The text provides rate limiting measures to avoid burdening the site while web scraping or use of automated scripts.
+
+### 1.1.3 Describe what do you do in order to reduce the burden to wikipedia website. For instance, you may:
+Use only a few mountains (e.g only >8000m ones) for testing, and extend this to 6800m when the testing sample works.
+
+
+## 1.2 Parse the list of mountains
+
+```{r}
+mountains_url  <- "https://en.wikipedia.org/wiki/List_of_mountains_by_elevation"
+mountains <- read_html(mountains_url)
+```
+
+
+```{r}
+mount_tables <- mountains %>% html_elements("table")
+mount_tables
+```
+
+Used html_elements with tag filter of table to check all tables of mountains, there are 9 tables about mountains in this wiki page
+Further we analyze table headers , hyper links in table etc below :
+
+```{r}
+table_headers <- mount_tables %>% html_elements("th")
+#table_headers
+table_headers %>% head(5) %>% html_text()
+```
+
+Table headers(text) of each table are displayed above. Mountain- gives mountain names with hyperlink to the mountain specific page, Metres - height of mountain in metres, Feet - height of mountain in feet, Range- name of the mountain ranges and Location and Notes - additional location information.
+
+Links to each of mountain (1 displayed for reference) is displayed as below - 
+
+```{r}
+
+
+table_href <- mount_tables %>% html_nodes(xpath = "//table//tbody//tr//td//a") 
+
+table_href %>% head(1)
+```
+
+
+Scrape wikitables from the page and keep only columns mountain name, metres. Metres is converted into valid numeric value then mountains >6800 filtered based on that column.
+```{r}
+ 
+mountain_table <- mountains %>% html_nodes(".wikitable") %>% html_table(fill=TRUE)
+#typeof(mountain_table[4])
+temp_df <- data.frame()
+for(i in 1:3){
+  temp_df <- rbind(temp_df, mountain_table[[i]][,c("Mountain", "Metres")])
+}
+
+temp_df <- temp_df %>%
+  mutate(Metres = as.numeric(gsub(",", "", Metres)) )
+
+temp_df <- temp_df %>%
+  filter( Metres > 6800)
+
+dim(temp_df)
+head(temp_df, 3)
+```
+
+Total 175 mountains are present with height > 6800. Below wiki links for each mountain is extracted and added to the df
+```{r}
+table_with_links <- mountains %>% html_nodes("table.wikitable") %>% html_nodes("tr") %>% html_node("td") %>% html_node("a") 
+
+#typeof(table_with_links)
+table_with_links <- Filter(Negate(is.na), table_with_links)
+
+
+wiki_links <- table_with_links %>% html_attr("href")
+
+wiki_links <- wiki_links[1:175]
+
+#wiki_links
+df_links <- as.data.frame(wiki_links)
+
+#df_links
+
+final_df <- cbind(temp_df, df_links)
+```
+
+Manipulating wiki link to create valid hyperlink. Final Data frame with moutain, metres (height), wiki links computed
+```{r}
+#final_df
+
+final_df <- final_df %>% mutate(wiki_links = paste("https://en.wikipedia.org", wiki_links, sep = ""))
+
+head(final_df, 4)
+dim(final_df)
+names(final_df)
+#final_df
+```
+
+##1.3 Scrape the individual mountain data
+function to convert string latitude and longitude into degree coordinates
+```{r}
+convert_latt_long_to_deg <- function(string_lat_long) {
+  direction_value <- if (grepl("[WS]", string_lat_long))
+    - 1
+  else
+    1
+  # direction: west/south are negative
+  # be careful when copying the symbols from the line below
+  dms <- strsplit(string_lat_long, "[°′″]")
+  # split into degrees, minutes, seconds 
+  dd <- as.numeric(dms[[1]][1])
+  mm <- as.numeric(dms[[1]][2])
+  ss <- as.numeric(dms[[1]][3])
+  degree_coordinate <- (dd + mm / 60 + ss / 3600) * direction_value
+  return (degree_coordinate)
+}
+
+```
+
+
+```{r}
+# mountain_eve_page <- read_html("https://en.wikipedia.org/wiki/Mount_Everest")
+# mount_lat <- mountain_eve_page %>% html_element("span.latitude") %>% html_text()
+# mount_long <- mountain_eve_page %>% html_element("span.longitude") %>% html_text()
+# 
+# mount_lat
+# mount_long
+```
+
+function to get latitude and longitude in degrees if input wiki link is given
+```{r , warning=FALSE}
+get_lattitude_longitude_from_wiki <- function(wiki_link) {
+ 
+  mountain_page <- try(read_html(wiki_link), silent = TRUE)
+  # if it works, you get the page
+  # if not, you get "try-error"
+  # silent: do not show errors in markdown
+  if (inherits(mountain_page, "try-error"))
+    # got 404 or another error, return NULL
+    return(NULL)
+  
+  mount_latitude <-
+    mountain_page %>% html_element("span.latitude") %>% html_text()
+  mount_longitude <-
+    mountain_page %>% html_element("span.longitude") %>% html_text()
+  return(data.frame(latitude = convert_latt_long_to_deg(mount_latitude), longitude = convert_latt_long_to_deg(mount_longitude)))
+}
+
+```
+
+Loop through the dataframe, read page via wiki link and compute latitude, longitude (in degrees) for each.
+```{r, warning=FALSE}
+final_df$latitude <- 0
+final_df$longitude <- 0
+
+for(i in 1: nrow(final_df)){
+  row_data <- final_df[i,]
+  latitude_longitude <- get_lattitude_longitude_from_wiki(row_data$wiki_links)
+  final_df[i,"latitude"] <- latitude_longitude$latitude
+  final_df[i,"longitude"] <- latitude_longitude$longitude 
+}
+
+head(final_df,5)
+
+```
+
+Below NA count is 11. total mountains 175 -11 -> 164. So I was able to get 164 mountains' latitude and longitude values after reading each wiki link of individual mountain page.
+```{r}
+count(final_df[is.na(final_df$latitude),])
+```
+## 1.4 Plot the mountains
+### 1.4.1 Plot mountains on world map with colour varying based on height
+```{r}
+df_cleaned <- na.omit(final_df)
+dim(df_cleaned)
+#df_cleaned
+```
+
+```{r}
+world <- map_data("world")
+
+ggplot(world) +geom_polygon(aes(long, lat, group = group),col = "white",
+                             fill = "gray") + geom_point(data = df_cleaned, aes(longitude, latitude, color=Metres)) + scale_color_gradientn(colors = c("green", "blue", "yellow", "red"),
+                        values = c(0, 0.25, 0.5, 1),
+                        limits = c(min(df_cleaned$Metres), max(df_cleaned$Metres)))
+```
+
+### 1.4.2 Describe result. Are all points valid? Where are tall mountains located?
+All tall mountains are located in Asian continent i.e. Himalaya & Karakoram ranges from wiki page- bordering India, Nepal, Pakistan and China regions.
+All locations plotted make sense to me - some are closer to sea but none invalid (example nothing in the middle of sea!)
+
+
+I spent around 7-8 hours for this assignment

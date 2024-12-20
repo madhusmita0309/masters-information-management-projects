@@ -1,0 +1,129 @@
+---
+title: "IMT 573: Lab 2 - Make plots (and manipulate data)"
+author: "Madhusmita Oke"
+output:
+  html_document: default
+---
+
+# Collaborators
+- Madhusmita
+
+# Setup
+
+Do whatever setup you do here, such as loading libraries
+
+```{r setup, message=FALSE}
+# Load standard libraries
+library("tidyverse")
+library("dplyr")
+
+```
+
+# 1 Create a time variable
+
+
+## 1.1 Load Data
+```{r}
+
+df_temperature <- read.csv("UAH-lower-troposphere-long.csv.bz2", sep = "\t")
+nrow(df_temperature)
+dim(df_temperature)
+names(df_temperature)
+head(df_temperature, 3)
+```
+
+## 1.2 Create Continuous time variable
+
+```{r}
+  # tail(df_temperature, 2)
+  df_temperature <- df_temperature %>%
+  select(year, month, region, temp) %>%
+  mutate(timev = year + (month/12)) 
+  
+  dim(df_temperature)
+  #head(df_temperature, 6)
+  tail(df_temperature, 3)
+```
+
+# 2 Plot
+
+```{r}
+
+ggplot( df_temperature, aes(timev, temp, col=region)) +
+geom_line()
+```
+
+## 2.1 Global Temperature over Time
+```{r}
+df_global_temp <- df_temperature[df_temperature$region == "globe",]
+#dim(df_global_temp)
+#length(unique(df_global_temp$year))
+
+ggplot(df_global_temp, aes(timev, temp, col = region)) +
+  geom_line(color = "blue")  
+```
+
+
+## 2.2 Plot North Hemisphere (nh) and Southern Hemisphere (sh) over time
+
+```{r}
+df_nh_sh <-
+  df_temperature[df_temperature$region == "nh" |
+                   df_temperature$region == "sh",]
+
+ggplot(df_nh_sh, aes(timev, temp, col = region)) +
+  geom_line()  
+```
+
+
+## 2.3 Plot only yearly global avg temperature
+
+```{r}
+
+df_yearly_avg_globe_temp <- df_temperature %>%
+  select(temp, region, year) %>%
+  filter(region == "globe") %>%
+  group_by(year) %>%
+  summarise(avg = mean(temp, na.rm = T))
+#df_yearly_avg_globe_temp
+
+ggplot(df_yearly_avg_globe_temp, aes(year, avg, col = avg, fill = avg)) +
+  geom_col()  
+```
+
+
+
+## 2.4 Try other geom tools!
+
+```{r}
+
+ggplot(df_yearly_avg_globe_temp, aes(avg)) +
+  geom_histogram(
+    inherit.aes = T,
+    stat = "bin",
+    bins = 22,
+    color = "red"
+  )
+```
+
+
+
+## 2.5 Challenge
+ Bar Plot with avg temperature over a decade - colour gradient to be used!
+```{r}
+
+df_decade_avg_temp <- df_temperature %>%
+  select(temp, region, year) %>%
+  mutate(decade = (year %/% 10)*10) %>%
+  group_by(decade) %>%
+  summarise(avg = mean(temp, na.rm = T))
+
+#df_decade_avg_temp
+
+  
+
+
+ggplot(df_decade_avg_temp, aes(decade, avg, col = avg, fill = avg, scale_fill_gradient(low = "blue", high = "red"))) +
+  geom_col()  
+```
+

@@ -1,0 +1,251 @@
+---
+title: 'IMT 573: PSet 1 - Data exploration and data-based discussion'
+author: "Madhusmita Oke"
+output: html_document
+---
+
+# Collaborators
+Madhusmita
+
+# Setup
+
+Do whatever setup you do here, such as loading libraries
+
+```{r setup, message=FALSE}
+# Load standard libraries
+library("tidyverse")
+```
+
+# 1 Basic Programming
+
+## 1.1 Function that converts HHMM (hours minutes in number) to HH.HH (as number). Eg: 730 -> 7.5 hrs
+
+
+```{r}
+convert <- function(x) {
+  hours <- x%/%100
+  mins <- x%%100
+  mins <- mins/60
+  return (hours + mins)  
+}
+
+print(convert(730))
+print(convert(1245))
+```
+
+## 1.2 Extract only positive numbers from the vector 
+
+```{r }
+set.seed(1)
+v <- sample(10, 20, replace = TRUE) - 5
+v
+```
+
+```{r }
+postive_vector <- c()
+for (i in v) {
+  if (i > 0) {
+    postive_vector <- append(postive_vector, i)
+  }
+}
+print(postive_vector)
+
+```
+
+## 1.3 Use logical indexing in vectors
+
+```{r}
+logic_vector <- v > 0
+print(logic_vector)
+print(v[logic_vector])
+```
+
+## 1.4 Use any, all with vectors
+```{r}
+v1 <- 9
+v2 <- c(1, 2)
+v3 <- c(2, 3,-4)
+
+check_positive <- function(vec){
+  if(any(vec < 0)){
+    return("Vector contains negative number")
+  }
+  else {
+    return("Vector does not contain negative number")
+  }
+}
+print(check_positive(v1))
+print(check_positive(v2))
+print(check_positive(v3))
+```
+
+# 2 Data Exploration
+Setup 
+
+```{r}
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+```
+## 2.1 Basic data description
+Without looking at the dataset, I think if a suitable dataset and analysis tools are provided, we should be able to answer the question of whether Australia or South Africa is dangerous in terms of shark attacks. The answer could be in the form of mean of shark attack attempts in a given time span for each of the countries- Australia or South Africa.
+
+```{r }
+# Load the data 
+df_shark <- read.csv("GSAF5.csv.bz2", sep = "\t")
+# rows (cases)
+nrow(df_shark)
+# variables or columns
+ncol(df_shark)
+
+```
+
+```{r}
+# check column names
+dim(df_shark)
+names(df_shark)
+
+```
+```{r eval=FALSE}
+head(df_shark, 6)
+```
+By looking at few rows of data, some of the variables are intuitive but not named in user friendly way e.g -FATAL..Y.N. says fatal or not but could be named differently. 
+Columns most important to us are FATAL..Y.N and Country.
+There are about 25k rows- this might be sufficient to analyze a trend if all needed countries' data is present.
+On observation,some of the values in age are not representative of age (contain character values). FATAL..Y.N has some missing values which need to be eliminated.
+
+## 2.2 Explore Data
+```{r eval=FALSE}
+# different countries listed
+sort(unique(df_shark$Country))
+length(unique(df_shark$Country))
+```
+
+There are 218 unique 'country' values in the dataset. However on observation we can see that few values are blank and some country values contain blank spaces or gibberish characters like ? (hence getting counted differently).Eg. Sudan and Sudan? is getting considered separately which is same. Also there are some country values which are actually continents eg. Africa - For the sake of this assignment (comparing Australia and South Africa countries), we may ignore those values.
+
+```{r }
+typeof(df_shark$Year)
+```
+The data type of "Year" attribute is double. Yes it corresponds to what I expected. 
+```{r eval=FALSE}
+sort(unique(df_shark$Year))
+sum(is.na(df_shark$Year))
+summary(df_shark$Year)
+```
+There are 19129 missing values for attribute Year.
+
+
+The unique year values contain values such as 0, 5,77,1000. The data values date back to 1800 and even 1500 which clearly shows the data is historical and collected from many years of artifacts/other sources of information(maybe). Data Quality of Shark attack dataset may not optimal in capturing the time span of events.
+```{r}
+min(df_shark$Year, na.rm = T)
+median(df_shark$Year, na.rm = T)
+range(df_shark$Year, na.rm = T)
+  
+```
+
+```{r eval=FALSE}
+filter(df_shark, Year == 0)
+```
+There are 129 cases with Year as zero. The Date value shows B.C data or strings such as 'Before 1824" and some of them vaguely represent an year or a time span. These output indicate that the sources of data may date back to BC (and are clearly vague) and could be verbally passed down data points (Eg - "No date, Before 1902")
+
+```{r}
+filter(df_shark, Date == "Ca. 725 B.C.")
+```
+Event that happened - ship wreck where sailors were attacked by sharks in Italy.The remains were found during excavations at Lacco Ameno, Ischia. The source of information is a book/written artifact by V.M. Coppleson where these data points are captured.
+
+This shows that the used data sources may have been excavation artifacts/books etc.
+
+## 2.3 Clean Data
+```{r }
+df_shark <- rename(df_shark, fatal = Fatal..Y.N.)
+df_shark %>%
+  select(fatal, Country, Year, Date) %>%
+  head(1)
+```
+
+```{r eval=FALSE}
+df_shark[ df_shark$Country=="SOUTH AFRICA", "Year"]
+df_shark[ df_shark$Country=="AUSTRALIA", "Year"]  
+```
+If year values for South Africa and Australia are checked - min values apart from 0 are 1852 and 1937. Hence we can filter all observations beyond 1937 in order to do a comparative analysis for both the countries.
+
+```{r}
+
+df_shark_recent <- filter(df_shark, Year >= 1937) 
+
+nrow(df_shark)
+nrow(df_shark_recent)
+summary(df_shark_recent$Year)
+```
+Here after cleaning we are left with 5250 cases.
+
+```{r eval=FALSE}
+unique(df_shark_recent$fatal)
+df_shark_recent[df_shark_recent$fatal == "Y x 2", ] # 2 fatalities (Male)
+df_shark_recent[df_shark_recent$fatal == "Nq", ]
+df_shark_recent[df_shark_recent$fatal == "UNKNOWN", ] # injury is not known hence cant say if fatal or not!
+df_shark_recent[df_shark_recent$fatal == " N", ] # blank space appended with N
+df_shark_recent[df_shark_recent$fatal == "2017", ] # incorrect fatal assignment
+df_shark_recent[df_shark_recent$fatal == "", ] # fatality values not captured! although injury is mentioned
+df_shark_recent[df_shark_recent$fatal == "F", ] # it could mean Fatal or False
+df_shark_recent[df_shark_recent$fatal == "M", ] # Male fatality
+
+```
+
+The values from fatal column comprise of empty, unknown and garbage values (like year 2017) along with valid values with empty string. See CODE COMMENTS for detailed analysis.
+
+```{r eval=FALSE}
+nrow(df_shark_recent)
+
+```
+all invalid fatal values amount to 465 rows out of total 5250 rows. From the 465 rows to be filtered, the only meaningful transformation would be convert " N" to "N" and "Y X 2", "M" to "Y" which amount to only 12 rows.This number is a small percentage, so we can filter those out!
+
+```{r eval=FALSE}
+filter(df_shark_recent, !(fatal  %in% c("Y x 2", "UNKNOWN", "Nq","","2017","F", "M", " N")))
+
+df_shark_recent <- filter(df_shark_recent, !(fatal  %in% c("Y x 2", "UNKNOWN", "Nq","","2017","F", "M", " N")))
+
+```
+Converting fatal values to logical values viz TRUE OR FALSE
+```{r}
+# convert fatal values to logical values
+# unique(df_shark_recent$fatal)
+df_fatal <- df_shark_recent %>%
+  mutate(fatal = ifelse(fatal == "Y", TRUE , FALSE)) 
+head(df_fatal$fatal, 2)
+#typeof(df_fatal$fatal)
+```
+
+## 2.4 Australia or South Africa
+Filtered dataframes based on country and computed percentage
+```{r}
+df_filtered <- filter(df_fatal, (Country  %in% c("SOUTH AFRICA","AUSTRALIA" )))
+df_south_africa <- filter(df_filtered, (Country  %in% c("SOUTH AFRICA")))
+df_australia <- filter(df_filtered, (Country  %in% c("AUSTRALIA")))
+
+total_sa = nrow(df_south_africa)
+total_aus = nrow(df_australia)
+cat("Total cases for Australia:",total_aus)
+cat("Total cases for South Africa:", total_sa)
+fatal_sa = sum(df_south_africa$fatal)
+cat("Fatal cases in South Africa",fatal_sa)
+
+fatal_aus = sum(df_australia$fatal)
+cat("fatal cases in Australia:",fatal_aus)
+
+percentage_sa = (fatal_sa *100)/total_sa
+percentage_aus = (fatal_aus *100)/ total_aus
+cat("Fatality percentage in Australia:", percentage_aus)
+cat("Fatality percentage in South Africa:", percentage_sa)
+
+```
+**Am I able to answer the question? How can this analysis be used? Reasoning**  
+Able to ans the question. South Africa is slightly more dangerous than Australia (but the difference is negligible). This analysis can be used for purposes like avoiding shark attacks in a certain region/area or time of the year. The injuries can be evaluated further and preventive measures or disaster management measures can be improved in these countries. For instance, if shark attacks are common during the breeding season - we must restrict human activity to reduce attacks.
+
+**Are there any ethical issues comparing original and analysed data? How can it be misused? Explain**
+
+Now, comparing the analysis of data and original data, I can see some ethical issues with respect to representation of data. The data dates back to ancient times, when people were not clearly aware about shark attacks and limited technology available. As a result at first glance, it may seem that sharks are too dangerous and presented in negative light! 
+This can impact Tourism in areas if such raw numbers are shown. It can also be misused by showing shark attacks as very dangerous and may thwart efforts going into restoration of shark diversity.
+
+**Another perspective :**
+Also out of ~1000- 15% are fatal : (Every fatality is important and measures should be taken to prevent it) but it shows that over year 1900 to present the percentage is not that alarming and can be used to productive way that helps reduce fatality of attack and also study of shark behavior. 

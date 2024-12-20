@@ -1,0 +1,389 @@
+---
+title: 'IMT 573: PSet 2 - Data cleaning and plotting'
+author: "Madhusmita Oke"
+output: html_document
+---
+
+
+# Collaborators
+- Madhusmita
+
+# Setup
+
+Do whatever setup you do here, such as loading libraries
+
+```{r setup, message=FALSE}
+# Load standard libraries
+library("tidyverse")
+library(dplyr)
+library(ggplot2)
+```
+
+# 1 Covid-19 Data
+
+## 1.1 Load a single month of African data
+
+```{r }
+df_africa <- read.csv("/Users/madhusmitaoke/MSIM-Academic/DataScience/IMT573-DSI/data/ps-3/covid/countries-africa.csv.bz2", sep = "\t")
+dim(df_africa)
+names(df_africa)
+head(df_africa, 2)
+```
+
+```{r}
+list_african_countries <- unique(df_africa$country)
+#list_african_countries
+cat("Number of African countries:",length(list_african_countries))
+```
+
+
+```{r }
+all_files <- list.files(path = "/Users/madhusmitaoke/MSIM-Academic/DataScience/IMT573-DSI/data/ps-3/covid/", pattern = "covid-global_*")
+all_files
+
+```
+
+```{r}
+cat("Total number of files:",length(list.files(path = "/Users/madhusmitaoke/MSIM-Academic/DataScience/IMT573-DSI/data/ps-3/covid/", pattern = "covid-global_*")))
+```
+
+```{r }
+df_global_oct_21 <- read.csv("/Users/madhusmitaoke/MSIM-Academic/DataScience/IMT573-DSI/data/ps-3/covid/covid-global_10-01-2021.csv.bz2", sep = "\t")
+dim(df_global_oct_21)
+names(df_global_oct_21)
+
+#unique(df_global_oct_21$Country_Region)
+
+#unique(df_global_oct_21$Province_State)
+
+
+df_common_african_countries <- df_global_oct_21 %>%
+  filter(df_global_oct_21$Country_Region %in% list_african_countries)
+
+common_countries <- df_common_african_countries$Country_Region
+
+
+uncommon_countries <-   df_africa %>%
+filter(!(df_africa$country %in% common_countries)) 
+
+#unique(df_global_oct_21$Country_Region)
+head(df_global_oct_21, 4)
+```
+
+```{r}
+cat("African countries in covid data :", length(common_countries) ," \n")  
+cat("African Countries not matched with COVID data:\n")
+print(uncommon_countries$country)
+
+```
+
+We should pay more attention to Democratic Republic of the Congo , Ivory Coast and Republic of the Congo because these are the densely populated countries out of the 9 unmatched countries! As a result, we cannnot miss out insights for these 3 countries (rank 3,16,39); whereas other unmatched countries have less population and rank lower, so would not affect our analysis significantly.
+
+```{r eval=FALSE}
+
+df_global_oct_21$Country_Region <- replace(df_global_oct_21$Country_Region, df_global_oct_21$Country_Region == "Congo (Brazzaville)", "Republic of the Congo")
+
+df_global_oct_21$Country_Region <- replace(df_global_oct_21$Country_Region, df_global_oct_21$Country_Region == "Congo (Kinshasa)", "Democratic Republic of the Congo")
+
+df_global_oct_21$Country_Region <- replace(df_global_oct_21$Country_Region, df_global_oct_21$Country_Region == "Cote d'Ivoire", "Ivory Coast")
+
+```
+
+```{r }
+df_common_african_countries2 <- df_global_oct_21 %>%
+  filter(df_global_oct_21$Country_Region %in% list_african_countries)
+
+#df_common_african_countries2
+common_countries2 <- df_common_african_countries2$Country_Region
+
+
+uncommon_countries2 <-   df_africa %>%
+filter(!(df_africa$country %in% common_countries2)) 
+
+uncommon_countries2$country
+```
+
+
+## 1.2 Load and Merge all data sets
+
+extracting date from file name:
+```{r}
+# try extracting date from file name:
+file_name <- "covid-global_02-01-2021.csv.bz2"
+datepart <- unlist(strsplit(file_name, "[_.]"))[2]
+
+#datepart  
+date <- as.Date(datepart, format = "%m-%d-%y")
+print(date)
+
+```
+
+Actual Merging of Data files for African countries with helper functions 
+```{r }
+# Function to unify Country_Region column across alll global covid data
+correct_country_column <- function(df_country) {
+  df_country <- df_country %>%
+    mutate(Country_Region = Country.Region) %>%
+    select(-Country.Region)
+  
+  return(df_country)
+}
+```
+
+```{r}
+# Function to correct names of African countries across global data
+replace_african_country_names <- function(df_tbd) {
+  if ("Country.Region" %in% names(df_tbd)) {
+    df_tbd <- correct_country_column(df_tbd)
+  }
+  df_tbd$Country_Region <-
+    replace(
+      df_tbd$Country_Region,
+      df_tbd$Country_Region == "Congo (Brazzaville)",
+      "Republic of the Congo"
+    )
+  
+  df_tbd$Country_Region <-
+    replace(
+      df_tbd$Country_Region,
+      df_tbd$Country_Region == "Congo (Kinshasa)",
+      "Democratic Republic of the Congo"
+    )
+  
+  df_tbd$Country_Region <-
+    replace(df_tbd$Country_Region,
+            df_tbd$Country_Region == "Cote d'Ivoire",
+            "Ivory Coast")
+  
+  return (df_tbd)
+}
+
+```
+
+```{r}
+# Function to add year and month to the data
+add_year_month <- function(df_x, date_obj) {
+  year_to_add <- format(date_obj, "%Y")
+  month_to_add <- format(date_obj, "%m")
+  df_x <- df_x %>%
+    mutate(Year = year_to_add) %>%
+    mutate(Month = month_to_add)
+  
+  return(df_x)
+}
+
+```
+
+```{r}
+# Function to extract date from file name 
+get_date_obj <- function(file_name_with_date) {
+  datepart <- unlist(strsplit(file_name_with_date, "[_.]"))[2]
+  
+  date <- as.Date(datepart, format = "%m-%d-%Y")
+  return(date)
+}
+
+```
+
+```{r}
+# Function to Extract only AFrican countries from global data
+extract_african_countries <- function(df_all_countries) {
+  df_african_countries <- df_all_countries %>%
+    filter(df_all_countries$Country_Region %in% list_african_countries)
+  
+  return(df_african_countries)
+}
+```
+
+```{r}
+# Function for Filtering all data step wise using above functions
+filter_africa_dataset <- function(df_x, date_obj) {
+  df_x <- replace_african_country_names(df_x)
+  df_x <- extract_african_countries(df_x)
+  df_x <- add_year_month(df_x, date_obj)
+  df_temp <- df_x %>%
+    select(Country_Region, Deaths, Year, Month)
+  return(df_temp)
+}
+```
+
+
+Looping Over all files to get AFrican countries Covid -19 data
+```{r}
+df_africa_final <-
+  data.frame(
+    Country_Region = c(),
+    Deaths = c(),
+    Year = c(),
+    Month = c()
+  )
+base_path <-
+  "/Users/madhusmitaoke/MSIM-Academic/DataScience/IMT573-DSI/data/ps-3/covid/"
+
+for (global_file in all_files) {
+  
+  df_temp <- read.csv(paste0(base_path, global_file), sep = "\t")
+  
+  date_obj <- get_date_obj(global_file)
+ 
+  df_temp <- filter_africa_dataset(df_temp, date_obj)
+  
+  #df_africa_final <- merge(df_africa_final, df_temp, all = TRUE)
+  df_africa_final <- rbind(df_africa_final, df_temp)
+}
+# finally AFrican Covid data is ready for analysis :displaying dim for reference
+dim(df_africa_final)
+names(df_africa_final)
+```
+
+## 1.3 Display time series 
+Manipulate population to numeric value for calculations ahead
+```{r}
+#df_africa$population
+#typeof(df_africa$population)
+
+df_africa$population <- as.numeric(gsub(",", "", df_africa$population))
+
+typeof(df_africa$population)
+
+```
+
+Deaths per Million summary - 
+```{r}
+df_africa_final_pop <- df_africa_final %>%
+  group_by(Country_Region) %>%
+  summarise(total_deaths = sum(Deaths)) %>%
+  mutate(country = Country_Region) %>%
+  select(-Country_Region)
+
+#df_africa_final_pop 
+
+df_deaths <- df_africa_final_pop %>% left_join(df_africa, by = "country") %>% mutate( Deaths_per_mill = (total_deaths/population)*1000000)  %>% select(total_deaths, population, country, Deaths_per_mill)
+
+head(df_deaths, 2)
+
+
+```
+
+
+Finding 10 worst death rates for African countries
+```{r}
+df_deaths2 <- df_deaths %>%
+  arrange(desc(Deaths_per_mill))
+
+ten_worst_deaths <- df_deaths2 %>%
+  slice_head(n = 10)
+
+ten_worst_deaths
+```
+
+Plotting death rate over time for the top-10 African countries:
+
+```{r}
+df_africa_final_2 <- df_africa_final %>%
+  mutate(country = Country_Region) %>%
+  select(-Country_Region)
+
+
+
+df_africa_final_3 <- df_africa_final_2 %>% left_join(ten_worst_deaths, by= "country") %>% mutate(date = as.Date(paste(df_africa_final_2$Year, df_africa_final_2$Month,"01", sep="-"))) %>%
+  filter(!is.na(total_deaths))
+
+
+
+
+df_temp <- df_africa_final_3 %>% group_by(country, date) %>%
+   summarise(death_rate = (sum(Deaths)/population) * 1000000)
+
+
+
+plot_1 <- ggplot(df_temp, aes(x = date, y = death_rate, color = country, fill= country  )) +
+  geom_line() +
+  labs(
+    title = "Time Series Plot of Deaths by Country",
+    x = "Date",
+    y = "Deaths per Million"
+  ) 
+
+plot_1
+
+```
+
+
+
+
+Death Rate over a Month for the countries -
+Calculated deaths per million grouping by year, month , country (here `df_5`)
+```{r}
+
+df_5 <- df_africa_final_3 %>%
+  group_by(country, Year, Month) %>%
+  mutate(monthly_death_rate = (sum(Deaths)/population) * 1000000)
+
+head(df_5, 5)
+```
+
+```{r}
+df_africa_final_3_new <- df_africa_final_3[order(df_africa_final_3$country, df_africa_final_3$Year, df_africa_final_3$Month),]
+
+agg_data_df <-  df_africa_final_3_new %>% group_by(country, Year, Month) %>%
+  summarise(monthly_deaths = sum(Deaths)) %>%
+  mutate(monthly_new_deaths = monthly_deaths - lag(monthly_deaths, default = first(monthly_deaths)))
+  
+
+agg_data_df <- agg_data_df %>%
+  mutate(timeVariable = as.Date(paste(Year, Month,"01", sep="-")))
+
+head(agg_data_df, 5)
+```
+
+Plotting death trend over month - to identify any Covid-19 waves. We can observe agg_data_df to see that deaths are varying over months within an year.
+```{r}
+plot_2 <- ggplot(agg_data_df, aes(x = timeVariable, y = monthly_new_deaths, color = country, fill= country  )) +
+  geom_line() +
+  labs(
+    title = "Time Series Plot Monthly Death Variation",
+    x = "Date",
+    y = "Monthly Deaths"
+  ) 
+
+plot_2
+```
+
+According to the above graph, South Africa experienced the highest peak variation in monthly deaths. It happened on 01/2021.
+
+Approximately, there are 3 major covid-19 waves seen in the death variation analysis (see South Africa, Tunisia, Libya...)
+
+## 1.4 Think about this
+
+### 1.4.1  Where would the US be on the top-10 list of African countries?
+
+Based on the internet / other news report readings, I think US would rank in atleast top 5 of the top-10 list of African countries. 
+ 
+### 1.4.2  What do you think about reliability of these data?
+
+Based on online search/readings, COVID-19 reliability of data is highly likely to be far from reality. There may have been many covid-19 cases which were not reported and didnt make it into the data. It is very likely to happen in developing countries from African continent. On the contrary, if high level of testing was done in parts of say US - the death number and covid-19 cases would show a higher number.
+
+In addition, there may have been mortality cases due to allied causes i.e. indirectly caused by covid-19 illness like heart attack which may not have been captured.
+For reasons such as political pressure, lack of awareness- much of the data related to covid-19 deaths might not have made it to the research data in question!
+
+### 1.4.3  What recommendations would you give to the data collection team related to how the data is collected and store? Think about variable names, variable coding, structure of data files, and everything else you struggled with in this problem set. But also mention what is done well.
+
+Some Recommendations to the data collection team : 
+Variable names such as Country_Region could have been constant across all global data files leading to less effort in aggregation
+
+Variable encoding of variable such as Country_Region could have to constant for global covid data and African country names data! For Example : The name of country - Republic of the Congo being same everywhere would have prevented a lot of confusion!
+
+Data could have been presented with specific variable date -for more credibility and reducing aggregation effort
+
+What was done well? - 
+Monthly organization of files (over 2020 and few of 2021) for global covid data and African country data with names and population.
+
+There were no garbage or NA values/ character values in crucial columns such as country, deaths etc
+
+Data type formatting was good, column names although not constant were intuitive to understand
+
+Looking at reference links of data sources, the team did good job in collating data from varied credible sources.
+
+
+Lastly, I took 8-10 hours for completing the assignment until this point. Most time spent on the monthly deaths trend with lag and mutate

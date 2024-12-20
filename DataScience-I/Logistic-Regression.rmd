@@ -1,0 +1,511 @@
+---
+title: 'IMT 573: PSet 7- Logistic Regression and Prediction'
+author: "Madhusmita Oke"
+output: html_document
+---
+
+# Setup
+
+Do whatever setup you do here, such as loading libraries
+
+```{r setup, message=FALSE}
+# Load standard libraries
+library("tidyverse")
+library(margins) 
+library(knitr)
+library(kableExtra)
+```
+
+# 1 Titanic: What Happened During Her Last Hours?
+
+## 1.1 Titanic Data
+
+### 1.1.1 load file titanic.csv, and do quick sanity checks.
+
+```{r}
+df_titanic <- read.csv("/Users/madhusmitaoke/MSIM-Academic/DataScience/IMT573-DSI/data/titanic.csv.bz2")
+
+dim(df_titanic)
+names(df_titanic)
+any(is.na(df_titanic))
+
+any(is.na(df_titanic$survived))
+any(is.na(df_titanic$pclass))
+any(is.na(df_titanic$sex))
+any(is.na(df_titanic$age))
+
+
+```
+
+After sanity checks, we find that there are few missing values in age column , which is an important column for further steps
+
+### 1.1.2 find the number of missings in the important variables. You are definitely going to use variables survived, pclass, sex, age, and you may use more (see below).
+```{r}
+sum(is.na(df_titanic$age))
+```
+
+There are 263 missing values for age column
+
+### 1.1.3 Are there implausible values that are technically not missing?
+```{r}
+missing_values <- df_titanic[!complete.cases(df_titanic), ]
+missing_values <- missing_values[is.na(missing_values$age),]
+dim(missing_values)
+
+unique(df_titanic$pclass)
+unique(df_titanic$sex)
+unique(df_titanic$survived)
+
+# removing NA to find any data quality issues with non-missing values
+df_updated_titanic <- df_titanic[complete.cases(df_titanic$age), ]
+dim(df_updated_titanic)
+
+min(df_updated_titanic$age)
+max(df_updated_titanic$age)
+
+df_valid_age <- df_updated_titanic[df_updated_titanic$age >= 1, ]
+dim(df_valid_age)
+
+```
+
+Age values recorded in data (after removing missing) have decimal values such as 0.16 which is technically not missing but not possible - its unlikely that infants were aboard the titanic. There are about 12 such rows with age < 1.
+
+The max age is also 80 which is kind of implausible  to me as I think it may be difficult for that old person to travel in the titanic.
+
+## 1.2 Logistic Regression
+
+### 1.2.1 Based on the survivors accounts, which variables do you think are the most important ones to describe survival? How should those be related to the survival? (Would they increase or decrease the chances of survival?)
+
+Based on survivors accounts, women and children were given preference during evacuation so sex and age are important variables to describe. Also, 1st and 2nd class passengers were given priority and third class folks had too much difficulty to even reach evacuation site. So pclass is also an important variable to describe survival.
+
+As mentioned above, based on account of survivors survival chances should increase with decrease in age. Survival chances should increase for pclass 1st , 2nd and decrease for 3rd pclass. Females might have higher survival chances than males based on survivor account.
+
+<b> I am removing missing / NA rows with respect to age and use df_updated_titanic after this point </b>
+
+### 1.2.2 Create a new variable child, that is 1 if the passenger was younger than 14 years old.
+
+```{r}
+
+df_updated_titanic$child <- ifelse(df_updated_titanic$age > 14, 0, 1)
+kable(head(df_updated_titanic,1), format = "html")%>%
+  kable_styling()
+```
+
+### 1.2.3 Explain why do we have to treat pclass as categorical. Convert it to categorical using factor(pclass).
+pclass should be treated as categorical because it determines a class of passengers 1st/2nd/3rd. We can classify passengers based on pclass and no other mathematical operations make sense for pclass.
+
+```{r}
+df_updated_titanic$pclass <- factor(df_updated_titanic$pclass)
+kable(head(df_updated_titanic,2), format = "html") %>% kable_styling()
+```
+
+### 1.2.4 Estimate a multiple logistic regression model where you explain survival by these variables. Show the results.
+
+```{r}
+summary(m <- glm(survived ~ child+pclass+sex, data=df_updated_titanic, family=binomial()))
+```
+
+```{r}
+
+# Marginal effects for interpretting results
+
+me <- margins(m) 
+summary(me)
+```
+
+
+### 1.2.5 Interpret the results. Did men or women, old or young have larger chances of survival? What about different passenger classes? How big were the effects?
+
+Based on AME above, we can infer following points:
+
+
+1. The probability of survival will increase by approximately 18.26% points for passengers who are child as compared to others (not child) keeping the other variables constant. 95% confidence intervals is [0.1076, 0.2576]
+
+2. The survival for pclass 2 (2nd class passengers) is expected to decrease by 17.49% points as compared to reference category ,that is, pclasss 1 (1st class), keeping the other variables constant. 95% confidence intervals is [-0.2466, -0.1032]
+
+3. The survival for pclass 3 (3rd class passengers) is expected to decrease by 31.86% points as compared to reference category ,that is, pclasss 1 (1st class), keeping the other variables constant . 95% confidence intervals is [-0.3816, -0.2556]
+
+4. The probability of survival is expected to decrease by approximately 49.74% points for passengers who are male as compared to female keeping the other variables constant. 95% confidence intervals is [-0.5520, -0.4428]
+
+The CI intervals for each provide range of likely values for the true population marginal effect. The p-value for all variables is very low indicating that all are statistically significant.
+
+From above, we can say that female passengers have higher chance of survival. If the passenger was child, there was slightly greater probability of survival as compared to adult (not much). pclass 3rd had worst chance of survival followed by pclass 2 , indicating that pclass 1 (reference category) had higher probability of survival. I think we can say that sex ie.female or male affected the survival chance most, followed by pclass and then child /non-child categories.
+
+### 1.2.6 But what about young men? Were they able to force their way to the boats? Create a variable “young man” (e.g. males between 18 and 35, or anything else you see suitable) and see if they survived more likely than others.
+
+```{r}
+# creating category youngman : for age >18 and age <=35 sex is male
+df_updated_titanic$youngman <- ifelse((df_updated_titanic$age > 18 & df_updated_titanic$age<=35 & df_updated_titanic$sex == "male"), 1, 0)
+
+kable(head(df_updated_titanic,2), format="html") %>% kable_styling()
+```
+
+```{r}
+summary(m2 <- glm(survived ~ youngman, data=df_updated_titanic, family=binomial()))
+```
+
+```{r}
+me2 <- margins(m2) 
+summary(me2)
+```
+
+For young men between ages 18 to 35, the survival probability decreases by 32.36% points. 95% confidence intervals is [-0.3788, -0.2584] : range of true population's marginal effects. pvalue is very low showing its statistically significant
+
+<!-- ```{r} -->
+<!-- # Trying for youngman and pclass -->
+<!-- summary(m3 <- glm(survived ~ youngman+pclass, data=df_updated_titanic, family=binomial())) -->
+<!--  me3 <- margins(m3)  -->
+<!--  summary(me3) -->
+<!-- # Results showed low p-value : statistically significant -->
+<!-- # young men 25% points less likely to survive : survival decreases  -->
+<!--  ``` -->
+
+### 1.2.7 Based on the results above, explain what can you tell about the last hours on Titanic. Are the survivors’ accounts broadly accurate? Did the order break down? Can you tell anything else interesting?
+
+Based on results above, we can tell that survivors' accounts are broadly accurate as: Females had more chance of survival than male and 1st, 2nd pclass passengers are expected to have higher probability of survival as compared to 3rd pclass passengers.Children have slightly more chances of survival than adults.
+
+The order didnt break down, as a young man's probability of survival is seen to decrease by 32.36% points as compared to others.
+
+
+# 2 Predict AirBnB Price
+
+### 2.1 Load the data. Select only relevant variables you need below, otherwise the dataset is hard to comprehend. Do basic sanity checks
+
+```{r}
+df_airbnb <- read.csv("/Users/madhusmitaoke/MSIM-Academic/DataScience/IMT573-DSI/data/airbnb-vancouver-bc-listings.csv.bz2")
+
+dim(df_airbnb)
+
+any(is.na(df_airbnb))
+
+#head(df_airbnb, 2)
+
+```
+
+Selecting few needed variables for further regression steps:
+
+```{r}
+df_airbnb <- df_airbnb %>% select(price, room_type, accommodates, bedrooms, property_type, name)
+
+any(is.na(df_airbnb))
+any(is.na(df_airbnb$price))
+any(is.na(df_airbnb$room_type))
+any(is.na(df_airbnb$accommodates))
+sum(is.na(df_airbnb$bedrooms))
+
+```
+There are 312 NA /missing values for bedrooms. 
+
+### 2.2 Do basic cleaning
+### 2.2.a Convert price to numeric
+
+```{r}
+
+
+df_airbnb <- df_airbnb %>%
+  mutate(price = price %>% 
+    gsub("$", "", ., fixed = TRUE) %>% 
+    gsub(",", "", ., fixed = TRUE) %>% 
+    as.numeric()
+  ) 
+
+kable(tail(df_airbnb,1), format = "html") %>% kable_styling()
+
+```
+
+### 2.2.b Remove entries with missing or invalid price, bedrooms, and other variables you need below.
+
+As there are many missing bedroom values, it needs to be substituted by relevant value instead of completely removing the rows. We can take a closer look at listings as:
+```{r}
+
+sapply(df_airbnb, function(x) sum(is.na(x)))
+sapply(df_airbnb, range)
+df_missing_bedrooms <- df_airbnb[is.na(df_airbnb$bedrooms),]
+tail(df_missing_bedrooms,1)
+```
+
+On inspecting values of 'property_type' and 'name' column , we can infer that 100+ listings here are studio or loft apartments so they will have bedrooms=0. Below code alters bedrooms=0 for loft or studio apartments.
+
+```{r}
+# function to check if the listing is studio or loft type 
+check_loft_studio <- function(property_name){
+  bedrooms <- 0
+  flag <- grepl("loft|studio", property_name, ignore.case = TRUE)
+  bedrooms <- ifelse(flag, bedrooms, NA)
+  return(bedrooms)
+}
+
+# test the function
+ans <- check_loft_studio("Suite,loft")
+
+
+# assign bedrooms =0 for studio and loft 
+df_airbnb <-
+  df_airbnb %>% mutate(bedrooms = ifelse(is.na(bedrooms), check_loft_studio(name), bedrooms))
+
+#sapply(df_airbnb, range)
+
+# assign bedrooms =0 for studio and loft 
+df_airbnb <- df_airbnb %>%
+  mutate(bedrooms = ifelse(is.na(bedrooms), check_loft_studio(property_type), bedrooms))
+
+
+#dim(df_airbnb)
+#sapply(df_airbnb, range)
+sum(is.na(df_airbnb))
+```
+
+Still 145 rows have bedrooms missing. There is no standard clue on what the bedroom number is for these rows. We can use column 'accomodates' along with 'room_type' to see general trend of bedroom number. Logically speaking bedrooms number could possibly determine accomodation count per room type so we can essentially assume same trend may hold true for these missing values.
+
+Below code- 
+
+1. Shows trend of avg bedroom number if grouped by accomodates and room_type
+
+2. Fills missing bedrooms values with median of bedroom number when rows are grouped by accomodates and room_type
+```{r}
+# Display trend per room_type per accomodation, what is the median bedroom number
+df_temp <- df_airbnb %>%
+  group_by(accommodates, room_type) %>% summarise(median = median(bedrooms, na.rm = TRUE))
+
+#df_temp
+kable(head(df_temp,5), format= "html") %>% kable_styling()
+# assign bedrooms = median(bedrooms) by grouping accomodation and room_type wise
+df_airbnb <- df_airbnb %>%
+  group_by(accommodates, room_type) %>%
+  mutate(bedrooms = ifelse(is.na(bedrooms) , median(bedrooms, na.rm = TRUE), bedrooms)) %>%
+  ungroup()
+
+sapply(df_airbnb, range)
+```
+
+
+Removing invalid price value based on trend of listings with respect to price.
+```{r}
+range(df_airbnb$price)
+sapply(df_airbnb, range)
+
+df_airbnb %>%
+    group_by(bedrooms) %>%
+    summarize(price = mean(price))
+
+df_temp <- df_airbnb[df_airbnb$price == 9999,]
+df_temp
+```
+
+
+Below we check what is the max, median price of Private Room to remove a room with illogical high price.
+```{r}
+df_airbnb %>% filter(df_airbnb$room_type == "Private room") %>% summarise(median_price = median(price))
+
+df_airbnb %>% filter(df_airbnb$room_type == "Private room") %>% summarise(max_price = max(price))
+
+# we can remove the outlier row with price as 9999 for a private 1 bedroom - which is illogical!
+df_airbnb <- df_airbnb %>% filter(price != 9999)
+
+sapply(df_airbnb, range)
+dim(df_airbnb)
+```
+
+Removed 1 row with price = 9999 for 1 room 
+
+### 2.3 Analyze the distribution of price. Does it look like normal? Does it look like something else? Does it suggest you should do a log-transformation?
+The values in column price have a defined lower bound and not clear upper bound. They tend to not look normal in distribution and hence violate the assumptions we make to compute standard errors. In such cases log(variable) shows a normal distribution. Using log transformation for price has important advantages : 
+
+1. log transformation makes the variable(here its room price) distribution normal - so its not violating normality assumptions
+
+2. Transforming price to log(price) renders multiplicative effect when converted to non-log form. 
+
+   logy = b0 +b1 + epsilon ...........(log form)
+   
+   => y = e^b0 * e^b1 * e^epsilpon ...(non log form conversion)
+   
+   
+A fat tailed distribution such as for price can be better described by multiplicative model (log form) than additive form. Thus, it improves predictive power of the model. (The increase or decrease in dependent variable is described in terms of percent of explanatory variable where even smaller values have predictive inference)
+   
+   
+Below graphs of price with and without log shows the distribution difference !
+```{r}
+hist(df_airbnb$price, main = "Histogram of Price", xlab = "Values", col = "lightblue", border = "black")
+```
+
+```{r}
+hist(log(df_airbnb$price), main = "Histogram of log(Price)", xlab = "Values", col = "lightblue", border = "black")
+```
+
+### 2.4 Convert the number of bedrooms into another variable with a limited number of categories only, such as 0, 1, 2, 3+, and use these categories in the models below.
+
+```{r}
+df_airbnb <- df_airbnb %>%
+  mutate(bedrooms_category = cut(bedrooms,
+                                 c(-Inf,0, 1, 2, Inf),
+                                 labels = c("0", "1", "2", "3+"), include.lowest = TRUE)) 
+
+#df_airbnb
+kable(head(df_airbnb, 2), format="html") %>% kable_styling()
+
+any(is.na(df_airbnb))
+```
+
+### 2.5 Now estimate a linear regression model where you explain log price with number of bedrooms (use the bedroom categories you created above). Interpret the results. Which model has higher R2?
+
+<b> Using price (non-log form) for linear regression model </b>
+
+```{r}
+
+
+model1 <- lm(price ~ bedrooms_category ,data= df_airbnb )
+summary(model1)
+```
+
+categories are statistically significant for the p-value (<0.05): bedroom category 0, 2,3+
+Here R square is 0.1238
+
+Reference category is bedrooms category 0 i.e. b0 = 129.006 units. Price for 0 category bedrooms is 129.006 units. Accordingly,
+
+price for bedroom category 1 = 129.006 - 6.323
+
+price for bedroom category 2 = 129.006+ 64.599
+
+price for bedroom category 3 = 129.006+ 266.536 
+
+
+<b> Using price (log form) for linear regression model </b>
+
+
+```{r}
+#head(df_airbnb, 5)
+
+model2 <- lm(log(price) ~ bedrooms_category ,data= df_airbnb )
+summary(model2)
+```
+
+p-value shows that bedrooms category 0,2,3+ are statistically significant
+
+Reference category is bedrooms category 0 i.e. b0 = 4.68739 units. log(price) for 0 category bedrooms is 4.68739 units. Accordingly,
+
+log(price) for bedroom category 1 = 4.68739 - 0.04103
+
+log(price) for bedroom category 2 = 4.68739 + 0.46434
+
+log(price) for bedroom category 3+ = 4.68739 + 0.98158
+
+
+Here R square value is 0.3072 
+
+As R sq = 1 − SSE /TSS indicating how much variation in data is depicted by the model 
+where :
+TSS - total sum of squares
+SSE - Sum of squared errors
+Thus, higher R sq better is model - here model 2 with log(price)  is performing better with higher R square
+
+### 2.6 What kind of values do these two variables: room_type and accomodates take? Show the counts!
+
+```{r}
+table(df_airbnb$room_type)
+
+table(df_airbnb$accommodates)
+```
+
+### 2.7 Convert the room type into 3 categories: Entire home/apt, Private room, Other; and recode accommodates into 3 categories: “1”, “2”, “3 or more”.
+
+```{r}
+
+df_airbnb <- df_airbnb %>%
+  mutate(room_category = recode(room_type, 
+                                "Entire home/apt" = "Entire home/apt", 
+                                "Private room" = "Private room",
+                                .default = "Other"))
+
+kable(head(df_airbnb,1), format = "html") %>% kable_styling()
+#sum(is.na(df_airbnb))
+```
+
+```{r}
+df_airbnb <-
+  df_airbnb %>% mutate(accommodates_category = recode( accommodates,
+      `1` = "1",
+      `2` = "2",
+      `3` = "3 or more",
+      .default = "3 or more"
+    )
+  )
+kable(head(df_airbnb, 1), format = "html") %>% kable_styling()
+#any(is.na(df_airbnb))
+```
+
+### 2.8 Now amend your previous model with these two variables (the 3-category version you did above). Interpret and comment the more interesting/important results. Do not forget to explain what are the relevant reference categories and R2.
+
+```{r}
+# adding log(price) as it will be used while predicting values
+df_airbnb <- df_airbnb %>% mutate(log_price = log(price))
+#df_airbnb
+model3 <- lm(log_price ~ bedrooms_category+ accommodates_category + room_category ,data= df_airbnb )
+summary(model3)
+```
+
+Here the reference categories are accomodates_category = 1 , room_category= Entire home/apt and bedrooms_category=0 which is depicted by Intercept b0.
+
+b0 indicates the log(price) is expected to be 4.393 units for accomodates_category=1 , room_category= Entire home/apt and bedrooms_category= 0 
+
+For bedrooms_category =1, increase in log(price) is 0.06656 as compared to reference category (bedroom category =0) holding other variables constant.
+
+For bedrooms_category =2, increase in log(price) is 0.34012 as compared to reference category (bedroom category =0) holding other variables constant.
+
+For bedrooms_category =3+, increase in log(price) is 0.84465  as compared to reference category (bedroom category =0) holding other variables constant.
+
+For accomodates category =2, increase in log(price) is 0.30156 as compared to reference category (accomodates category =1) holding other variables constant.
+
+For accomodates category =3 or more, increase in log(price) is 0.44323 as compared to reference category (accomodates category =1) holding other variables constant.
+
+For room category = Other,  decrease in log(price) is 0.12772 as compared to reference category (room category =Entire home/apt) holding other variables constant.
+
+For room category = Private room,  decrease in log(price) is 0.40861 as compared to reference category (room category =Entire home/apt) holding other variables constant.
+
+
+Here, room_category= Other is not statistically significant based on p-value.
+
+R square is 0.4196
+
+### 2.9 You should see that type “Other” is not statistically significant. What does this mean? Why do you think this is the case?
+
+The room category "Other" is not statistically significant. This means room category "Other" does not affect log(price) as compared to the reference category which is Entire home/Apt. This can be attributed to less number of rooms for that Other category in data and less variation in rate based on the room category"Other". So it does not impact price or log(price) here.
+
+### 2.10 Now use the model above to predict (log) price for each listing in your data.
+
+```{r}
+# filtering only required columns for prediction 
+df_subset <- df_airbnb %>% select(log_price, bedrooms_category, accommodates_category, room_category)
+any(is.na(df_subset))
+
+
+predicted_log_price <- predict(model3, newdata = df_subset)
+kable(head(predicted_log_price,2), format = "html") %>% kable_styling()
+
+
+```
+
+### 2.11 Compute root-mean-squared-error (RMSE) of your predictions.
+```{r}
+
+rmse <- sqrt(mean((predicted_log_price - df_airbnb$log_price)^2))
+rmse
+```
+
+
+### 2.12 Now use your model to predict log price for a 2-bedroom apartment that accommodates 4 (i.e. a full 2BR apartment).
+
+```{r}
+#df_airbnb
+
+new_data2 <- data.frame(
+  bedrooms_category = factor(2, levels = levels(df_airbnb$bedrooms_category)),
+  accommodates_category = "3 or more",
+  room_category = "Entire home/apt")
+
+
+# Predict the log price for the new data
+predicted_log_price2 <- predict(model3, newdata = new_data2)
+
+predicted_log_price2
+```
+
